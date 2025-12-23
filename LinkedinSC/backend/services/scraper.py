@@ -11,19 +11,30 @@ from pathlib import Path
 from datetime import datetime
 
 # Add serp-api-aggregator to Python path
-# It's located in the sibling directory of LinkedinSC
+# Strategy: Check local directory, then parents, then PYTHONPATH
 current_file = Path(__file__).resolve()
-# parents[0]=services, [1]=backend, [2]=LinkedinSC, [3]=root (Linkedin SC)
-serp_path = current_file.parents[3] / "serp-api-aggregator" / "src"
+# 1. Check if serp is already in path (e.g. via PYTHONPATH)
+try:
+    import serp.client
+    HAS_SERP = True
+except ImportError:
+    HAS_SERP = False
 
-if not serp_path.exists():
-    # Fallback/Debug check
-    print(f"[ERROR] serp-api-aggregator not found at {serp_path}")
-    # Try another common location if needed or use the absolute path we know works
-    serp_path = Path("/Users/adekurniawan/Library/Mobile Documents/com~apple~CloudDocs/Linkedin SC/serp-api-aggregator/src")
-
-if str(serp_path) not in sys.path:
-    sys.path.insert(0, str(serp_path))
+if not HAS_SERP:
+    # 2. Try to find relative to this file in a monorepo structure
+    # Development: /root/LinkedinSC/backend/services/scraper.py -> /root/serp-api-aggregator/src
+    possible_paths = [
+        current_file.parents[3] / "serp-api-aggregator" / "src",
+        current_file.parents[2] / "serp-api-aggregator" / "src",
+        Path("/app/serp-api-aggregator/src"),
+        Path("/app/src")
+    ]
+    
+    for p in possible_paths:
+        if (p / "serp").exists():
+            if str(p) not in sys.path:
+                sys.path.insert(0, str(p))
+            break
 
 from serp.client import SerpAggregator
 from models import LinkedInProfile, CompanyDetail, RelatedCompany, EmployeeInfo, LinkedInPost, LinkedInJob, LinkedInAllResult
