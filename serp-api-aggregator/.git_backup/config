@@ -1,0 +1,15 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+[remote "origin"]
+	url = https://github.com/deleon626/serp-api-aggregator.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "refactor-scripts"]
+	remote = origin
+	merge = refs/heads/refactor-scripts
+	vscode-merge-base = origin/refactor-scripts
+	vscode-merge-base = origin/refactor-scripts
