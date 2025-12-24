@@ -1,58 +1,46 @@
 # Core API
-fastapi==0.115.0
-uvicorn==0.32.0
+fastapi
+uvicorn
 pydantic>=2.10.0
-pydantic-settings>=2.6.0
-python-dotenv==1.0.1
-python-multipart==0.0.12
+pydantic-settings
+python-dotenv
+python-multipart
 
 # HTTP & Async
 aiohttp>=3.11.11
-httpx==0.27.2
+httpx
 
 # Scraping & Automation
-crawl4ai==0.7.8
-playwright==1.49.0
-beautifulsoup4==4.12.3
-lxml==5.3.0
-soupsieve==2.6
+crawl4ai>=0.3.0
+playwright
+beautifulsoup4
+lxml
 
 # Database & Cache
-aiosqlite==0.20.0
-redis==5.0.8
+aiosqlite
+redis
 
 # Utilities
-rich==13.9.2
-typer==0.12.5
-tqdm==4.66.5
-humanize==4.11.0
-
-# Dependencies for Crawl4AI
-numpy>=1.26.0
-pillow>=10.4.0
-nltk>=3.9.1
-jsonschema>=4.23.0
-jinja2>=3.1.2
-litellm>=1.53.1
-tiktoken>=0.7.0
-tokenizers>=0.19.1
-openai>=1.52.0
-cryptography>=43.0.1
-pyOpenSSL>=24.2.1
-psutil>=6.0.0
-xxhash>=3.5.0
-rank-bm25>=0.2.2
-snowballstemmer>=2.2.0
-cssselect>=1.2.0
-fake-useragent>=1.5.1
-chardet>=5.2.0
-brotli>=1.1.0
-lark>=1.2.2
-alphashape>=1.3.1
-shapely>=2.0.0
-trimesh>=4.4.0
-networkx>=3.3
-rtree>=1.3.0
-scipy>=1.13.1
-tf-playwright-stealth>=1.1.0
-fastuuid>=0.13.0
+rich
+typer
+tqdm
+humanize
+cryptography
+pyOpenSSL
+psutil
+xxhash
+rank-bm25
+snowballstemmer
+cssselect
+fake-useragent
+chardet
+brotli
+lark
+alphashape
+shapely
+trimesh
+networkx
+rtree
+scipy
+tf-playwright-stealth
+fastuuid
