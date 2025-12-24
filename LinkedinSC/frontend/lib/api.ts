@@ -155,13 +155,22 @@ export interface ScrapeDetailRequest {
 export interface CompanyDetail {
   url: string;
   name: string;
+  tagline: string | null;
+  industry: string | null;
+  location: string | null;
+  followers: string | null;
+  employee_count_range: string | null;
   full_description: string | null;
   specialties: string[] | null;
-  employee_count: number | null;
   about: string | null;
   website: string | null;
   phone: string | null;
   founded: number | null;
+  employee_growth: string | null;
+  top_employee_schools: string[] | null;
+  recent_hires: Array<{ name: string; position?: string }> | null;
+  related_companies: Array<{ name: string; industry?: string; followers?: string }> | null;
+  alumni_working_here: Array<{ name: string; position?: string }> | null;
   scraped_at: string;
 }
 

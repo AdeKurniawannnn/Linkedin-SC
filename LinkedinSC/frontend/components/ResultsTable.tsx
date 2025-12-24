@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ExternalLink, Download } from "lucide-react";
-import type { LinkedInProfile } from "@/lib/api";
+import { ExternalLink, Download, ChevronDown, ChevronUp, Globe, MapPin, Users, Calendar } from "lucide-react";
+import type { LinkedInProfile, CompanyDetail } from "@/lib/api";
 import { scrapeCompanyDetails } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 
 type SiteFilterType = 'all' | 'profile' | 'posts' | 'jobs' | 'company';
 
@@ -29,10 +30,21 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
 
   // State untuk tracking scraping progress
   const [scrapingInProgress, setScrapingInProgress] = useState(false);
-  const [scrapedData, setScrapedData] = useState<Map<number, any>>(new Map());
+  const [scrapedData, setScrapedData] = useState<Map<number, CompanyDetail>>(new Map());
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   // Determine if this is company data based on explicit dataType prop
   const isCompanyData = dataType === 'company';
+
+  const toggleRow = (index: number) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedRows(newExpanded);
+  };
 
   const handleToggle = (index: number) => {
     const newSelected = new Set(selectedProfiles);
@@ -80,14 +92,7 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
         for (const company of result.companies) {
           const index = urlToIndexMap.get(company.url);
           if (index !== undefined) {
-            const scrapedData = {
-              fullDescription: company.full_description || `Scraped from ${company.name}`,
-              specialties: company.specialties || [],
-              employeeCount: company.employee_count,
-              scrapedAt: company.scraped_at
-            };
-
-            setScrapedData(prev => new Map(prev).set(index, scrapedData));
+            setScrapedData(prev => new Map(prev).set(index, company));
             console.log(`✅ [SCRAPE] Scraped ${company.name} successfully`);
           }
         }
@@ -110,7 +115,7 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
     // Different CSV structure for company vs profile
     if (isCompanyData) {
       // Company CSV
-      const headers = ["No", "Scraped", "Nama Perusahaan", "Industri", "Followers", "Ukuran", "Tahun", "Lokasi", "Tipe", "Headquarters", "Rank", "Frequency", "Pages Seen", "Company URL", "Full Description"];
+      const headers = ["No", "Scraped", "Nama Perusahaan", "Industri", "Followers", "Ukuran", "Tahun", "Lokasi", "Website", "Company URL", "Full Description"];
       const rows = profiles.map((p, index) => {
         const titleParts = p.title.split(' - ');
         const name = titleParts[0].trim();
@@ -120,18 +125,14 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
           index + 1,
           scraped ? "Yes" : "No",
           `"${name.replace(/"/g, '""')}"`,
-          `"${(p.industry || "-").replace(/"/g, '""')}"`,
-          scraped && scraped.employeeCount ? scraped.employeeCount : (p.followers || "-"),
-          `"${(p.company_size || "-").replace(/"/g, '""')}"`,
-          p.founded_year || "-",
-          `"${(p.location || "-").replace(/"/g, '""')}"`,
-          `"${(p.company_type || "-").replace(/"/g, '""')}"`,
-          `"${(p.headquarters || "-").replace(/"/g, '""')}"`,
-          p.rank || "-",
-          p.frequency || "-",
-          `"${p.pages_seen.join(", ")}"`,
+          `"${(scraped?.industry || p.industry || "-").replace(/"/g, '""')}"`,
+          scraped?.followers || p.followers || "-",
+          `"${(scraped?.employee_count_range || p.company_size || "-").replace(/"/g, '""')}"`,
+          scraped?.founded || p.founded_year || "-",
+          `"${(scraped?.location || p.location || "-").replace(/"/g, '""')}"`,
+          scraped?.website || "-",
           p.profile_url,
-          scraped ? `"${scraped.fullDescription.replace(/"/g, '""')}"` : `"${(p.description || "-").replace(/"/g, '""')}"`,
+          `"${(scraped?.full_description || p.description || "-").replace(/"/g, '""')}"`,
         ];
       });
 
@@ -235,19 +236,16 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">No</TableHead>
-                <TableHead className="w-16 text-center">Toggle</TableHead>
+                <TableHead className="w-16 text-center">No</TableHead>
+                <TableHead className="w-16 text-center">Action</TableHead>
                 <TableHead className="w-48">Nama {isCompanyData ? "Perusahaan" : ""}</TableHead>
                 {isCompanyData ? (
                   <>
                     <TableHead className="w-40">Industri</TableHead>
                     <TableHead className="w-24 text-right">Followers</TableHead>
                     <TableHead className="w-28">Ukuran</TableHead>
-                    <TableHead className="w-20 text-center">Tahun</TableHead>
                     <TableHead className="w-40">Lokasi</TableHead>
-                    <TableHead className="w-32">Tipe</TableHead>
-                    <TableHead className="w-20 text-center">Rank</TableHead>
-                    <TableHead className="w-24 text-center">Frequency</TableHead>
+                    <TableHead className="w-16 text-center">Info</TableHead>
                   </>
                 ) : (
                   <>
@@ -265,12 +263,13 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
                 const headline = titleParts.slice(1).join(' - ').trim();
                 const scraped = scrapedData.get(index);
                 const isScraped = scraped !== undefined;
+                const isExpanded = expandedRows.has(index);
 
                 return (
                   <>
                     <TableRow
                       key={index}
-                      className={`hover:bg-gray-50 ${isScraped ? 'bg-green-50' : ''}`}
+                      className={`hover:bg-gray-50 transition-colors ${isScraped ? 'bg-blue-50/30' : ''}`}
                     >
                       <TableCell className="font-medium text-center">
                         {index + 1}
@@ -282,68 +281,53 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
                         />
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={profile.profile_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          {name}
-                        </a>
+                        <div className="flex flex-col">
+                          <a
+                            href={profile.profile_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[200px]"
+                          >
+                            {isScraped ? scraped.name : name}
+                          </a>
+                          {isScraped && scraped.tagline && (
+                            <span className="text-xs text-gray-500 italic truncate max-w-[200px]">
+                              {scraped.tagline}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       {isCompanyData ? (
                         <>
                           <TableCell>
                             <div className="text-sm text-gray-700">
-                              {profile.industry || '-'}
+                              {scraped?.industry || profile.industry || '-'}
                             </div>
-                            {isScraped && scraped.specialties && (
-                              <div className="text-xs text-green-600 mt-1">
-                                ✓ {scraped.specialties.join(', ')}
-                              </div>
-                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="text-sm text-gray-700 font-medium">
-                              {isScraped && scraped.employeeCount
-                                ? scraped.employeeCount.toLocaleString()
-                                : profile.followers !== null
-                                ? profile.followers.toLocaleString()
-                                : '-'}
-                            </div>
-                            {isScraped && (
-                              <div className="text-xs text-green-600 mt-1">✓ Updated</div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-gray-700">
-                              {profile.company_size || '-'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="text-sm text-gray-700">
-                              {profile.founded_year || '-'}
+                              {scraped?.followers || (profile.followers ? profile.followers.toLocaleString() : '-')}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm text-gray-700">
-                              {profile.location || '-'}
+                              {scraped?.employee_count_range || profile.company_size || '-'}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm text-gray-700">
-                              {profile.company_type || '-'}
+                              {scraped?.location || profile.location || '-'}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <div className="text-sm text-gray-700 font-medium">
-                              {profile.rank || '-'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="text-sm text-gray-700 font-medium">
-                              {profile.frequency || '-'}
-                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => toggleRow(index)}
+                            >
+                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
                           </TableCell>
                         </>
                       ) : (
@@ -354,17 +338,98 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
                             </div>
                           </TableCell>
                           <TableCell>
-                            {profile.description ? (
-                              <div className="text-sm text-gray-600 line-clamp-2">
-                                {profile.description}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
-                            )}
+                            <div className="text-sm text-gray-600 line-clamp-2">
+                              {profile.description || '-'}
+                            </div>
                           </TableCell>
                         </>
                       )}
                     </TableRow>
+                    
+                    {/* Expanded Detail Row */}
+                    {isExpanded && (
+                      <TableRow className="bg-gray-50/50">
+                        <TableCell colSpan={isCompanyData ? 8 : 5} className="p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="md:col-span-2 space-y-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center">
+                                  About
+                                  {isScraped && <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 text-[10px] h-4">Scraped</Badge>}
+                                </h4>
+                                <p className="text-sm text-gray-600 leading-relaxed">
+                                  {isScraped ? (scraped.full_description || scraped.about) : profile.description}
+                                </p>
+                              </div>
+                              
+                              {isScraped && scraped.specialties && scraped.specialties.length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Specialties</h4>
+                                  <div className="flex flex-wrap gap-1">
+                                    {scraped.specialties.map((s, i) => (
+                                      <Badge key={i} variant="outline" className="text-[11px] font-normal">
+                                        {s}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <h4 className="text-sm font-semibold text-gray-900">Company Info</h4>
+                              <div className="space-y-3">
+                                {isScraped && scraped.website && (
+                                  <div className="flex items-start gap-2">
+                                    <Globe className="h-4 w-4 text-gray-400 mt-0.5" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] text-gray-400 uppercase font-bold">Website</span>
+                                      <a href={scraped.website.startsWith('http') ? scraped.website : `https://${scraped.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-all">
+                                        {scraped.website}
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <div className="flex items-start gap-2">
+                                  <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                                  <div className="flex flex-col">
+                                    <span className="text-[11px] text-gray-400 uppercase font-bold">Headquarters</span>
+                                    <span className="text-sm text-gray-600">{scraped?.location || profile.location || '-'}</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-2">
+                                  <Users className="h-4 w-4 text-gray-400 mt-0.5" />
+                                  <div className="flex flex-col">
+                                    <span className="text-[11px] text-gray-400 uppercase font-bold">Company Size</span>
+                                    <span className="text-sm text-gray-600">{scraped?.employee_count_range || profile.company_size || '-'}</span>
+                                  </div>
+                                </div>
+                                
+                                {(scraped?.founded || profile.founded_year) && (
+                                  <div className="flex items-start gap-2">
+                                    <Calendar className="h-4 w-4 text-gray-400 mt-0.5" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] text-gray-400 uppercase font-bold">Founded</span>
+                                      <span className="text-sm text-gray-600">{scraped?.founded || profile.founded_year}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {isScraped && (
+                                <div className="pt-4 border-t mt-4">
+                                  <span className="text-[10px] text-gray-400 italic">
+                                    Last scraped: {new Date(scraped.scraped_at).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </>
                 );
               })}
