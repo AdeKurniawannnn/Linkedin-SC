@@ -5,6 +5,8 @@ import time
 import sys
 import os
 import re
+import asyncio
+import random
 from typing import Dict, Optional
 
 from pathlib import Path
@@ -274,34 +276,49 @@ async def scrape_company_details(urls: list[str]) -> Dict:
         # Import Crawl4AI
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
-        # Configure browser untuk LinkedIn scraping
-        browser_config = BrowserConfig(
-            headless=True,
-            viewport_width=1920,
-            viewport_height=1080,
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        )
-
-        # Configure crawler
-        crawler_config = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS,
-            remove_overlay_elements=True,
-            wait_for_images=False,
-            page_timeout=30000,  # 30 seconds
-            screenshot=False
-        )
+        # List of realistic user agents
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+        ]
 
         companies = []
 
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            for url in urls:
+        async with AsyncWebCrawler() as crawler:
+            for i, url in enumerate(urls):
+                # Add random delay between requests (except the first one)
+                if i > 0:
+                    delay = random.uniform(8.0, 15.0) # Increased delay for LinkedIn
+                    print(f"[CRAWL4AI] Waiting {delay:.2f}s to avoid LinkedIn detection...")
+                    await asyncio.sleep(delay)
+
                 print(f"[CRAWL4AI] Scraping {url}...")
 
+                # Rotating user agent for each request
+                current_browser_config = BrowserConfig(
+                    headless=True,
+                    viewport_width=1920,
+                    viewport_height=1080,
+                    user_agent=random.choice(user_agents)
+                )
+
+                # Configure crawler
+                current_crawler_config = CrawlerRunConfig(
+                    cache_mode=CacheMode.BYPASS,
+                    remove_overlay_elements=True,
+                    wait_for_images=False,
+                    page_timeout=45000, # Increased timeout
+                    screenshot=False
+                )
+
                 try:
-                    # Crawl the company page
+                    # Crawl the company page with its own browser config
                     result = await crawler.arun(
                         url=url,
-                        config=crawler_config
+                        config=current_crawler_config,
+                        browser_config=current_browser_config
                     )
 
                     if not result.success:
@@ -311,6 +328,12 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                     # Extract company info from markdown
                     markdown = result.markdown
                     metadata = result.metadata
+
+                    # Detect LinkedIn Login/Register redirect
+                    title = metadata.get('title', '')
+                    if "Daftar" in title or "Log In" in title or "Sign Up" in title:
+                        print(f"[CRAWL4AI] ⚠️ Detected LinkedIn login redirect for {url}. Skipping.")
+                        continue
 
                     print(f"[CRAWL4AI] Markdown length: {len(markdown)} chars")
 
