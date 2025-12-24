@@ -296,21 +296,23 @@ async def scrape_company_details(urls: list[str]) -> Dict:
 
                 print(f"[CRAWL4AI] Scraping {url}...")
 
-                # Rotating user agent for each request
+                # Rotating user agent and enabling magic mode
                 current_browser_config = BrowserConfig(
                     headless=True,
                     viewport_width=1920,
                     viewport_height=1080,
-                    user_agent=random.choice(user_agents)
+                    user_agent=random.choice(user_agents),
+                    extra_args=["--disable-blink-features=AutomationControlled"], # Extra stealth
                 )
 
-                # Configure crawler
+                # Configure crawler with magic mode
                 current_crawler_config = CrawlerRunConfig(
                     cache_mode=CacheMode.BYPASS,
                     remove_overlay_elements=True,
                     wait_for_images=False,
-                    page_timeout=45000, # Increased timeout
-                    screenshot=False
+                    page_timeout=60000,
+                    magic_mode=True, # Enable advanced anti-detection
+                    wait_for="body"
                 )
 
                 try:

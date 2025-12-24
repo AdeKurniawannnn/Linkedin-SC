@@ -10,7 +10,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000, // 60 second timeout for SERP requests
+  timeout: 180000, // 3 minute timeout for batch scraping
 });
 
 // Types matching backend SERP Aggregator
