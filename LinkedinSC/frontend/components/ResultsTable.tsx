@@ -264,15 +264,20 @@ export function ResultsTable({ profiles, metadata, dataType = 'profile' }: Resul
                 const scraped = scrapedData.get(index);
                 const isScraped = scraped !== undefined;
                 const isExpanded = expandedRows.has(index);
+                const isPending = scrapingInProgress && selectedProfiles.has(index) && !isScraped;
 
                 return (
                   <>
                     <TableRow
                       key={index}
-                      className={`hover:bg-gray-50 transition-colors ${isScraped ? 'bg-blue-50/30' : ''}`}
+                      className={`hover:bg-gray-50 transition-colors ${isScraped ? 'bg-blue-50/30' : ''} ${isPending ? 'opacity-60 italic' : ''}`}
                     >
                       <TableCell className="font-medium text-center">
-                        {index + 1}
+                        {isPending ? (
+                          <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                        ) : (
+                          index + 1
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Checkbox

@@ -276,14 +276,6 @@ async def scrape_company_details(urls: list[str]) -> Dict:
         # Import Crawl4AI
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
-        # List of realistic user agents
-        user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-        ]
-
         companies = []
 
         # List of realistic user agents
@@ -293,14 +285,15 @@ async def scrape_company_details(urls: list[str]) -> Dict:
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         ]
 
+        total_urls = len(urls)
         for i, url in enumerate(urls):
             # Add random delay between requests (except the first one)
             if i > 0:
-                delay = random.uniform(10.0, 20.0) # Increased delay for LinkedIn
-                print(f"[CRAWL4AI] Waiting {delay:.2f}s to avoid LinkedIn detection...")
+                delay = random.uniform(10.0, 20.0) 
+                print(f"[CRAWL4AI] [{i+1}/{total_urls}] Waiting {delay:.2f}s before next request...")
                 await asyncio.sleep(delay)
 
-            print(f"[CRAWL4AI] Scraping {url}...")
+            print(f"[CRAWL4AI] [{i+1}/{total_urls}] Scraping: {url}")
 
             # Configure browser for this specific request
             browser_config = BrowserConfig(
@@ -311,13 +304,12 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                 extra_args=["--disable-blink-features=AutomationControlled"]
             )
 
-            # Configure crawler
+            # Configure crawler - magic_mode removed to avoid compatibility issues
             crawler_config = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
                 remove_overlay_elements=True,
                 wait_for_images=False,
                 page_timeout=60000,
-                magic_mode=True,
                 wait_for="body"
             )
 
@@ -350,9 +342,12 @@ async def scrape_company_details(urls: list[str]) -> Dict:
 
                     # Debug: Save markdown to file for inspection
                     debug_file = f"/tmp/linkedin_scrape_{company_name.replace(' ', '_')}.md"
-                    with open(debug_file, 'w', encoding='utf-8') as f:
-                        f.write(markdown)
-                    print(f"[DEBUG] Saved markdown to {debug_file}")
+                    try:
+                        with open(debug_file, 'w', encoding='utf-8') as f:
+                            f.write(markdown)
+                        print(f"[DEBUG] Saved markdown to {debug_file}")
+                    except Exception:
+                        pass
                     print(f"[DEBUG] Company: {company_name}")
 
                     # Extract tagline (## header after company name)
@@ -449,20 +444,8 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                         specialties = [s.strip() for s in specialties_text.split(',')]
 
                     # Extract website (Nettsted/Website)
-                    website_match = re.search(r'(?:Nettsted|Website)\s*\n\s*\[\s*([^\]]+)\s*\]', markdown, re.IGNORECASE)
+                    website_match = re.search(r'(?:Nettsted|Website)\s*\n\s*\[\s*([^\\\]]+)\s*\]', markdown, re.IGNORECASE)
                     website = website_match.group(1).strip() if website_match else None
-
-                    # Debug: Print extracted fields
-                    print(f"[DEBUG] Extracted fields:")
-                    print(f"  - Tagline: {tagline}")
-                    print(f"  - Location: {location}")
-                    print(f"  - Industry: {industry}")
-                    print(f"  - Employee count: {employee_count_range}")
-                    print(f"  - Founded: {founded_year}")
-                    print(f"  - Followers: {followers}")
-                    print(f"  - Website: {website}")
-                    print(f"  - Specialties: {len(specialties) if specialties else 0} items")
-                    print(f"  - Description length: {len(full_description) if full_description else 0} chars")
 
                     # Extract employee growth
                     growth_match = re.search(r'([\d,]+)\s*\n\s*Pertumbuhan karyawan', markdown, re.IGNORECASE)
@@ -523,7 +506,7 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                     # Extract alumni working here
                     alumni = []
                     # Look for name followed by position (without markdown syntax)
-                    alumni_matches = re.finditer(r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s*\n([A-Za-z][A-Za-z\s]+(?:di|at)\s+[A-Za-z][^\n![\]()]{10,60}?)(?:\n|$)', markdown)
+                    alumni_matches = re.finditer(r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s*\n([A-Za-z][A-Za-z\s]+(?:di|at)\s+[A-Za-z][^\n![\]()]{10,60}?)(?:\n|$)', markdown, re.IGNORECASE)
                     for match in alumni_matches:
                         name = match.group(1).strip()
                         position = match.group(2).strip()
@@ -560,9 +543,9 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                     companies.append(company_detail)
                     print(f"[CRAWL4AI] ✅ Scraped {company_name} successfully")
 
-                except Exception as e:
-                    print(f"[CRAWL4AI] ❌ Error scraping {url}: {str(e)}")
-                    continue
+            except Exception as e:
+                print(f"[CRAWL4AI] ❌ Error scraping {url}: {str(e)}")
+                continue
 
     except ImportError as e:
         print(f"[CRAWL4AI] Import error: {e}")
