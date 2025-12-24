@@ -38,10 +38,10 @@ RUN python -m playwright install chromium
 
 # Set environment variables
 ENV PYTHONPATH="/app/serp-api-aggregator/src:/app/LinkedinSC/backend"
-ENV PORT=8000
+ENV PORT=3000
 
 # Expose port
-EXPOSE 8000
+EXPOSE 3000
 
 # Jalankan aplikasi
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
