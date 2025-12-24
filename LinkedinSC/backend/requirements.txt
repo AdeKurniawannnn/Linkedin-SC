@@ -9,7 +9,6 @@ python-multipart==0.0.12
 # HTTP & Async
 aiohttp==3.10.10
 httpx==0.27.2
-axios-api-client==0.1.0
 
 # Scraping & Automation
 crawl4ai==0.7.8
