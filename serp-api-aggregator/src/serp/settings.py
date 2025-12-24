@@ -26,9 +26,9 @@ class SerpSettings(BaseSettings):
     )
 
     # API Configuration
-    bright_data_api_key: SecretStr = Field(
-        ...,
-        description="Bright Data API key (required)",
+    bright_data_api_key: SecretStr | None = Field(
+        default=None,
+        description="Bright Data API key (optional for startup, required for search)",
     )
     bright_data_zone: str = Field(
         default="serp_api1",

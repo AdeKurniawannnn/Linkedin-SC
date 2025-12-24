@@ -30,6 +30,24 @@ app.add_middleware(
 # Include API routes
 app.include_router(router, prefix="/api")
 
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "LinkedScraper API",
+        "cors": "enabled"
+    }
+
+@app.get("/search")
+@app.post("/search")
+def search_fallback():
+    """Fallback for missing /api prefix"""
+    return {
+        "success": False,
+        "error": "Wrong endpoint",
+        "message": "Please use /api/search instead of /search"
+    }
 
 @app.get("/")
 def root():
