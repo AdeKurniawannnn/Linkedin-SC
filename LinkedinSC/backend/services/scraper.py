@@ -286,41 +286,47 @@ async def scrape_company_details(urls: list[str]) -> Dict:
 
         companies = []
 
-        async with AsyncWebCrawler() as crawler:
-            for i, url in enumerate(urls):
-                # Add random delay between requests (except the first one)
-                if i > 0:
-                    delay = random.uniform(8.0, 15.0) # Increased delay for LinkedIn
-                    print(f"[CRAWL4AI] Waiting {delay:.2f}s to avoid LinkedIn detection...")
-                    await asyncio.sleep(delay)
+        # List of realistic user agents
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ]
 
-                print(f"[CRAWL4AI] Scraping {url}...")
+        for i, url in enumerate(urls):
+            # Add random delay between requests (except the first one)
+            if i > 0:
+                delay = random.uniform(10.0, 20.0) # Increased delay for LinkedIn
+                print(f"[CRAWL4AI] Waiting {delay:.2f}s to avoid LinkedIn detection...")
+                await asyncio.sleep(delay)
 
-                # Rotating user agent and enabling magic mode
-                current_browser_config = BrowserConfig(
-                    headless=True,
-                    viewport_width=1920,
-                    viewport_height=1080,
-                    user_agent=random.choice(user_agents),
-                    extra_args=["--disable-blink-features=AutomationControlled"], # Extra stealth
-                )
+            print(f"[CRAWL4AI] Scraping {url}...")
 
-                # Configure crawler with magic mode
-                current_crawler_config = CrawlerRunConfig(
-                    cache_mode=CacheMode.BYPASS,
-                    remove_overlay_elements=True,
-                    wait_for_images=False,
-                    page_timeout=60000,
-                    magic_mode=True, # Enable advanced anti-detection
-                    wait_for="body"
-                )
+            # Configure browser for this specific request
+            browser_config = BrowserConfig(
+                headless=True,
+                viewport_width=1920,
+                viewport_height=1080,
+                user_agent=random.choice(user_agents),
+                extra_args=["--disable-blink-features=AutomationControlled"]
+            )
 
-                try:
-                    # Crawl the company page with its own browser config
+            # Configure crawler
+            crawler_config = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                remove_overlay_elements=True,
+                wait_for_images=False,
+                page_timeout=60000,
+                magic_mode=True,
+                wait_for="body"
+            )
+
+            try:
+                # Create a fresh crawler for each URL to avoid session fingerprinting
+                async with AsyncWebCrawler(config=browser_config) as crawler:
                     result = await crawler.arun(
                         url=url,
-                        config=current_crawler_config,
-                        browser_config=current_browser_config
+                        config=crawler_config
                     )
 
                     if not result.success:
@@ -328,13 +334,13 @@ async def scrape_company_details(urls: list[str]) -> Dict:
                         continue
 
                     # Extract company info from markdown
-                    markdown = result.markdown
-                    metadata = result.metadata
+                    markdown = result.markdown or ""
+                    metadata = result.metadata or {}
 
                     # Detect LinkedIn Login/Register redirect
                     title = metadata.get('title', '')
-                    if "Daftar" in title or "Log In" in title or "Sign Up" in title:
-                        print(f"[CRAWL4AI] ⚠️ Detected LinkedIn login redirect for {url}. Skipping.")
+                    if not markdown or "Daftar" in title or "Log In" in title or "Sign Up" in title or "forbidden" in markdown.lower():
+                        print(f"[CRAWL4AI] ⚠️ Detected LinkedIn blocking/redirect for {url}. Skipping.")
                         continue
 
                     print(f"[CRAWL4AI] Markdown length: {len(markdown)} chars")
