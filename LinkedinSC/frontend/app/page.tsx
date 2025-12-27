@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SearchForm } from "@/components/SearchForm";
 import { ResultsTable } from "@/components/ResultsTable";
 import { ProgressBar } from "@/components/ProgressBar";
+import { StatusIndicator } from "@/components/StatusIndicator";
 import { searchLinkedIn, type SearchResponse } from "@/lib/api";
 
 export default function Home() {
@@ -36,7 +37,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">
       {/* Header */}
-      <header className="text-center mb-12">
+      <header className="text-center mb-12 relative">
+        <div className="absolute top-0 right-0">
+          <StatusIndicator />
+        </div>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">
           LinkedScraper
         </h1>

@@ -60,6 +60,13 @@ class StatsResponse(BaseModel):
     rate_limit_rps: float
 
 
+@router.get("/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    """Health check endpoint."""
+    from .. import __version__
+    return HealthResponse(status="ok", version=__version__)
+
+
 @router.post("/search", response_model=SearchResult)
 async def search(
     request: SearchRequest,
