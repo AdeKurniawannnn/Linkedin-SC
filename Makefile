@@ -1,4 +1,8 @@
-.PHONY: dev backend frontend install clean help test test-backend test-frontend test-unit test-unit-v test-services test-routes test-utils test-components test-quick test-cov test-cov-term test-install test-integration test-all
+.PHONY: dev backend frontend install clean help \
+        test test-all test-env \
+        test-unit test-unit-v test-services test-routes test-utils test-integration test-backend-cov test-cov-term \
+        test-vitest test-vitest-watch test-components test-stores test-page test-e2e test-e2e-ui test-frontend-cov \
+        test-install
 
 # Get the directory where this Makefile lives (use CURDIR for paths with spaces)
 ROOT_DIR := $(CURDIR)
@@ -33,22 +37,37 @@ help:
 	@echo "$(BRIGHT_CYAN)Available commands:$(RESET)"
 	@echo ""
 	@echo "$(BOLD)Development:$(RESET)"
-	@echo "  $(BRIGHT_GREEN)make dev$(RESET)            - Run both frontend and backend"
-	@echo "  $(BRIGHT_BLUE)make backend$(RESET)        - Run backend only (port 8000)"
-	@echo "  $(BRIGHT_MAGENTA)make frontend$(RESET)       - Run frontend only (port 3000)"
-	@echo "  $(YELLOW)make install$(RESET)        - Install all dependencies"
-	@echo "  $(RED)make clean$(RESET)          - Stop all running services"
+	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run both frontend and backend"
+	@echo "  $(BRIGHT_BLUE)make backend$(RESET)         - Run backend only (port 8000)"
+	@echo "  $(BRIGHT_MAGENTA)make frontend$(RESET)        - Run frontend only (port 3000)"
+	@echo "  $(YELLOW)make install$(RESET)         - Install all dependencies"
+	@echo "  $(RED)make clean$(RESET)           - Stop all running services"
 	@echo ""
-	@echo "$(BOLD)Testing (108 unit + 41 integration tests):$(RESET)"
-	@echo "  $(BRIGHT_GREEN)make test$(RESET)           - Run unit + frontend tests (safe for CI)"
-	@echo "  $(BRIGHT_RED)make test-all$(RESET)       - Run ALL tests including integration"
-	@echo "  $(BRIGHT_CYAN)make test-unit$(RESET)      - Backend unit tests (108 tests)"
-	@echo "  $(BRIGHT_BLUE)make test-services$(RESET)  - Service layer tests (54 tests)"
-	@echo "  $(BRIGHT_MAGENTA)make test-routes$(RESET)    - Route layer tests (40 tests)"
-	@echo "  $(BRIGHT_YELLOW)make test-utils$(RESET)     - Utility layer tests (14 tests)"
-	@echo "  $(CYAN)make test-integration$(RESET) - Integration tests (41 tests, may need API)"
-	@echo "  $(WHITE)make test-cov$(RESET)       - Run tests with coverage report"
-	@echo "  $(DIM)make test-install$(RESET)   - Install test dependencies"
+	@echo "$(BOLD)Testing:$(RESET)"
+	@echo "  $(BRIGHT_RED)make test-env$(RESET)        - Check env config (API keys) - run first!"
+	@echo "  $(BRIGHT_GREEN)make test$(RESET)            - Quick tests (unit + vitest, CI-safe)"
+	@echo "  $(BRIGHT_RED)make test-all$(RESET)        - Full suite (unit + integration + vitest + E2E)"
+	@echo ""
+	@echo "$(BOLD)Backend Tests (149 total):$(RESET)"
+	@echo "  $(BRIGHT_CYAN)make test-unit$(RESET)       - All unit tests (108)"
+	@echo "  $(BRIGHT_BLUE)make test-services$(RESET)   - Service layer (54)"
+	@echo "  $(BRIGHT_MAGENTA)make test-routes$(RESET)     - Route layer (40)"
+	@echo "  $(BRIGHT_YELLOW)make test-utils$(RESET)      - Utility layer (14)"
+	@echo "  $(CYAN)make test-integration$(RESET)  - Integration tests (41, may need API)"
+	@echo "  $(WHITE)make test-backend-cov$(RESET)  - Backend with coverage"
+	@echo ""
+	@echo "$(BOLD)Frontend Tests (167 Vitest + E2E):$(RESET)"
+	@echo "  $(BRIGHT_GREEN)make test-vitest$(RESET)     - All Vitest tests (167)"
+	@echo "  $(BRIGHT_GREEN)make test-vitest-watch$(RESET) - Vitest watch mode"
+	@echo "  $(BRIGHT_BLUE)make test-components$(RESET) - Component tests only (99)"
+	@echo "  $(BRIGHT_MAGENTA)make test-stores$(RESET)     - Store tests only (26)"
+	@echo "  $(BRIGHT_YELLOW)make test-page$(RESET)       - Page tests only (26)"
+	@echo "  $(CYAN)make test-e2e$(RESET)        - E2E Playwright (headless)"
+	@echo "  $(WHITE)make test-e2e-ui$(RESET)     - E2E Playwright (UI mode)"
+	@echo "  $(DIM)make test-frontend-cov$(RESET) - Frontend with coverage"
+	@echo ""
+	@echo "$(BOLD)Setup:$(RESET)"
+	@echo "  $(DIM)make test-install$(RESET)    - Install test dependencies"
 
 # Run both services (clean first to avoid port conflicts)
 dev: clean
@@ -85,77 +104,126 @@ clean:
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Services stopped$(RESET)"
 
 # ============================================================================
-# TESTING
+# TESTING - COMBINED
 # ============================================================================
 
-# Run all tests (backend + frontend)
-test: test-backend test-frontend
-	@echo "$(BOLD)$(BRIGHT_GREEN)✓ All tests complete$(RESET)"
+# Quick tests (unit + vitest, CI-safe)
+test: test-unit test-vitest
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Quick tests complete$(RESET)"
 
-# Run all backend tests (108 unit tests)
-test-backend: test-unit
-	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Backend tests complete (108 tests)$(RESET)"
+# Full test suite (env check + unit + integration + vitest + e2e)
+test-all: test-env test-unit test-integration test-vitest test-e2e
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Full test suite complete$(RESET)"
 
-# Run all frontend tests
-test-frontend: test-components
-	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Frontend tests complete$(RESET)"
+# ============================================================================
+# BACKEND TESTS
+# ============================================================================
 
-# Backend unit tests (108 tests - no API calls)
+# Environment configuration check (run first to catch missing API keys)
+test-env:
+	@echo "$(BOLD)$(BRIGHT_RED)━━━ ENV CONFIG CHECK$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
+		python -m pytest tests/test_env_config.py -v --tb=short
+
+# All backend unit tests (108)
 test-unit:
-	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ UNIT TESTS$(RESET)"
-	@echo "$(BRIGHT_CYAN)→$(RESET) Running backend unit tests (108 tests)..."
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ BACKEND UNIT TESTS$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/ -v --tb=short
 
-# Backend unit tests - verbose with full output
+# Backend unit tests - verbose
 test-unit-v:
-	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ UNIT TESTS (VERBOSE)$(RESET)"
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ BACKEND UNIT TESTS (VERBOSE)$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/ -v --tb=long -s
 
-# Backend service layer tests only (54 tests)
+# Service layer tests (54)
 test-services:
-	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ SERVICE LAYER TESTS$(RESET)"
-	@echo "$(BRIGHT_BLUE)→$(RESET) Running service layer tests (54 tests)..."
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ SERVICE LAYER$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/test_service_*.py -v --tb=short
 
-# Backend route layer tests only (40 tests)
+# Route layer tests (40)
 test-routes:
-	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ ROUTE LAYER TESTS$(RESET)"
-	@echo "$(BRIGHT_MAGENTA)→$(RESET) Running route layer tests (40 tests)..."
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ ROUTE LAYER$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/test_routes/ -v --tb=short
 
-# Backend utility layer tests only (14 tests)
+# Utility layer tests (14)
 test-utils:
-	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ UTILITY LAYER TESTS$(RESET)"
-	@echo "$(BRIGHT_YELLOW)→$(RESET) Running utility layer tests (14 tests)..."
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ UTILITY LAYER$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/test_utils_parsers.py -v --tb=short
 
-# Frontend component tests
-test-components:
-	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ COMPONENT TESTS$(RESET)"
-	@echo "$(BRIGHT_YELLOW)→$(RESET) Running frontend component tests..."
-	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:run
+# Integration tests (41, may require API keys)
+test-integration:
+	@echo "$(BOLD)$(CYAN)━━━ INTEGRATION TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
+		python -m pytest tests/integration/ -v --tb=short
 
-# Quick tests (no API calls - fast feedback)
-test-quick: test-unit
-	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Quick tests complete (no API calls)$(RESET)"
-
-# Test with coverage report
-test-cov:
-	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ TEST COVERAGE$(RESET)"
-	@echo "$(BRIGHT_CYAN)→$(RESET) Running tests with coverage..."
+# Backend coverage
+test-backend-cov:
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ BACKEND COVERAGE$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/ --cov=services --cov=api --cov=utils --cov-report=html --cov-report=term-missing -v
 
-# Test with coverage - terminal only
+# Backend coverage - terminal only
 test-cov-term:
-	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ TEST COVERAGE (TERMINAL)$(RESET)"
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ BACKEND COVERAGE (TERMINAL)$(RESET)"
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		python -m pytest tests/unit/ --cov=services --cov=api --cov=utils --cov-report=term-missing
+
+# ============================================================================
+# FRONTEND TESTS (VITEST)
+# ============================================================================
+
+# All Vitest tests (167)
+test-vitest:
+	@echo "$(BOLD)$(BRIGHT_GREEN)━━━ VITEST TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:run
+
+# Vitest watch mode
+test-vitest-watch:
+	@echo "$(BOLD)$(BRIGHT_GREEN)━━━ VITEST WATCH$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test
+
+# Component tests only (99)
+test-components:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ COMPONENT TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:run -- tests/components/
+
+# Store tests only (26)
+test-stores:
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ STORE TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:run -- tests/stores/
+
+# Page tests only (26)
+test-page:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ PAGE TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:run -- tests/app/
+
+# Frontend coverage
+test-frontend-cov:
+	@echo "$(BOLD)$(CYAN)━━━ FRONTEND COVERAGE$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:coverage
+
+# ============================================================================
+# E2E TESTS (PLAYWRIGHT)
+# ============================================================================
+
+# E2E headless
+test-e2e:
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ E2E TESTS$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:e2e
+
+# E2E UI mode
+test-e2e-ui:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ E2E TESTS (UI MODE)$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run test:e2e:ui
+
+# ============================================================================
+# SETUP
+# ============================================================================
 
 # Install test dependencies
 test-install:
@@ -163,14 +231,3 @@ test-install:
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		pip install -r requirements-dev.txt
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Test dependencies installed$(RESET)"
-
-# Integration tests (41 tests - may require API keys/external services)
-test-integration:
-	@echo "$(BOLD)$(CYAN)━━━ INTEGRATION TESTS$(RESET)"
-	@echo "$(CYAN)→$(RESET) Running integration tests (41 tests)..."
-	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
-		python -m pytest tests/integration/ -v --tb=short -m "integration or not integration"
-
-# Run ALL tests (unit + integration + frontend)
-test-all: test-unit test-integration test-components
-	@echo "$(BOLD)$(BRIGHT_GREEN)✓ All tests complete (108 unit + 41 integration + frontend)$(RESET)"

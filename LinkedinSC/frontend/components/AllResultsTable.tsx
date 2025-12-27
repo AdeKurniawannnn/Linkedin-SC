@@ -100,7 +100,21 @@ export function AllResultsTable({ results, metadata }: AllResultsTableProps) {
   };
 
   if (results.length === 0) {
-    return null;
+    return (
+      <Card className="w-full max-w-6xl mx-auto mt-8">
+        <CardContent className="py-12 text-center">
+          <div className="text-gray-400 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
+          <p className="text-sm text-gray-500">
+            Try adjusting your search criteria or using different keywords.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

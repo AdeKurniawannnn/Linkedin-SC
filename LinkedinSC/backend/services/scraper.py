@@ -159,8 +159,8 @@ async def search_linkedin_profiles(
     # Fetch strategy: Fetch extra pages to ensure we get enough after filtering
     # Profile search: ~60-70% results are profiles (rest filtered out)
     # Company search: ~50-60% results are companies (rest filtered out)
-    # Fetch 5x pages to ensure we have enough after filtering
-    fetch_pages = max_pages * 5
+    # Fetch 5x pages to ensure we have enough after filtering (capped at 100)
+    fetch_pages = min(max_pages * 5, 100)
 
     # Initialize SERP client with async context manager
     async with SerpAggregator() as client:
