@@ -1,6 +1,8 @@
 # OS
 .DS_Store
 Thumbs.db
+*.log
+logs/
 
 # Dependencies
 **/node_modules/
@@ -19,12 +21,20 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+.claude/
+.serena/
 
 # Build
 **/dist/
 **/build/
 **/out/
 .next/
+**/playwright-report/
+**/test-results/
+
+# Testing
+**/coverage/
+**/.nyc_output/
 
 # Gemini
 .gemini/
