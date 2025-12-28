@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
-import { Copy, ExternalLink, Check, AlertTriangle } from "lucide-react";
+import { Copy, ArrowSquareOut, Check, Warning } from "@phosphor-icons/react";
 
 // Google search query character limits
 const GOOGLE_MAX_QUERY_LENGTH = 2048;
@@ -58,101 +58,94 @@ export function QueryPreview() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Query Preview</CardTitle>
-          <CardDescription>
-            Your composed search query
-          </CardDescription>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopy}
-            disabled={!composedQuery}
-            className="gap-1"
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" />
-                Copy
-              </>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenInGoogle}
-            disabled={!composedQuery}
-            className="gap-1"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open in Google
-          </Button>
-        </div>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Query Preview</CardTitle>
       </CardHeader>
       <CardContent>
         {composedQuery ? (
-          <>
-            <div
-              className={`bg-gray-50 dark:bg-gray-900 rounded-md p-4 border-2 transition-colors ${
-                isOverLimit
-                  ? "border-red-500 dark:border-red-600"
-                  : isNearLimit
-                  ? "border-yellow-500 dark:border-yellow-600"
-                  : "border-gray-200 dark:border-gray-700"
-              }`}
-            >
-              <code className="font-mono text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
-                {composedQuery}
-              </code>
+          <div className="flex gap-3 items-start" style={{ height: "37px" }}>
+            <div className="flex-1">
+              <div
+                className={`bg-gray-50 dark:bg-gray-900 rounded-md p-4 border-2 transition-colors ${
+                  isOverLimit
+                    ? "border-red-500 dark:border-red-600"
+                    : isNearLimit
+                    ? "border-yellow-500 dark:border-yellow-600"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                style={{ height: "37px" }}
+              >
+                <code className="font-mono text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
+                  {composedQuery}
+                </code>
+              </div>
+
+              {/* Warning messages */}
+              {isOverLimit && (
+                <div className="mt-3 flex items-start gap-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-3">
+                  <Warning className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" weight="bold" />
+                  <div className="text-sm text-red-800 dark:text-red-200">
+                    <p className="font-medium">Query exceeds Google's limit</p>
+                    <p className="text-xs mt-1">
+                      Your query is {queryLength - GOOGLE_MAX_QUERY_LENGTH} characters over the maximum length of {GOOGLE_MAX_QUERY_LENGTH}.
+                      Google may truncate or reject this search.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isNearLimit && (
+                <div className="mt-3 flex items-start gap-2 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
+                  <Warning className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" weight="bold" />
+                  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <p className="font-medium">Approaching character limit</p>
+                    <p className="text-xs mt-1">
+                      {GOOGLE_MAX_QUERY_LENGTH - queryLength} characters remaining before Google's {GOOGLE_MAX_QUERY_LENGTH}-character limit.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Query character count */}
+              <p
+                className={`mt-2 text-xs font-medium ${
+                  isOverLimit
+                    ? "text-red-600 dark:text-red-400"
+                    : isNearLimit
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-gray-500"
+                }`}
+              >
+                {queryLength} / {GOOGLE_MAX_QUERY_LENGTH} characters
+              </p>
             </div>
-
-            {/* Warning messages */}
-            {isOverLimit && (
-              <div className="mt-3 flex items-start gap-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-3">
-                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-800 dark:text-red-200">
-                  <p className="font-medium">Query exceeds Google's limit</p>
-                  <p className="text-xs mt-1">
-                    Your query is {queryLength - GOOGLE_MAX_QUERY_LENGTH} characters over the maximum length of {GOOGLE_MAX_QUERY_LENGTH}.
-                    Google may truncate or reject this search.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isNearLimit && (
-              <div className="mt-3 flex items-start gap-2 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <p className="font-medium">Approaching character limit</p>
-                  <p className="text-xs mt-1">
-                    {GOOGLE_MAX_QUERY_LENGTH - queryLength} characters remaining before Google's {GOOGLE_MAX_QUERY_LENGTH}-character limit.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Query character count */}
-            <p
-              className={`mt-2 text-xs font-medium ${
-                isOverLimit
-                  ? "text-red-600 dark:text-red-400"
-                  : isNearLimit
-                  ? "text-yellow-600 dark:text-yellow-400"
-                  : "text-gray-500"
-              }`}
-            >
-              {queryLength} / {GOOGLE_MAX_QUERY_LENGTH} characters
-            </p>
-          </>
+            <div className="flex flex-row gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopy}
+                disabled={!composedQuery}
+                title={copied ? "Copied!" : "Copy to clipboard"}
+                className="h-9 w-9"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4" weight="bold" />
+                ) : (
+                  <Copy className="h-4 w-4" weight="bold" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleOpenInGoogle}
+                disabled={!composedQuery}
+                title="Open in Google"
+                className="h-9 w-9"
+              >
+                <ArrowSquareOut className="h-4 w-4" weight="bold" />
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-md p-4 border text-center">
             <p className="text-sm text-gray-500">

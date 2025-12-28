@@ -2,7 +2,7 @@
 
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { SpinnerGap } from "@phosphor-icons/react";
 
 interface ProgressBarProps {
   isLoading: boolean;
@@ -16,7 +16,7 @@ export function ProgressBar({ isLoading, message }: ProgressBarProps) {
     <Card className="w-full max-w-2xl mx-auto mt-8">
       <CardHeader>
         <CardTitle className="flex items-center text-lg">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          <SpinnerGap className="mr-2 h-5 w-5 animate-spin" weight="bold" />
           Scraping LinkedIn...
         </CardTitle>
         <CardDescription>

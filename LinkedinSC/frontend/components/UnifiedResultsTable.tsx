@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Building2 } from "lucide-react";
+import { DownloadSimple, ArrowSquareOut, Buildings } from "@phosphor-icons/react";
 import type { UnifiedResult, RawSearchResponse } from "@/lib/api";
 
 /**
@@ -188,7 +188,7 @@ export function UnifiedResultsTable({
               : "Select All"}
           </Button>
           <Button onClick={handleExportCSV} variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
+            <DownloadSimple className="mr-2 h-4 w-4" weight="bold" />
             Export CSV
           </Button>
           {onScrapeCompanies && (
@@ -198,7 +198,7 @@ export function UnifiedResultsTable({
               size="sm"
               disabled={selectedCompanyUrls.length === 0}
             >
-              <Building2 className="mr-2 h-4 w-4" />
+              <Buildings className="mr-2 h-4 w-4" weight="bold" />
               Scrape Companies ({selectedCompanyUrls.length})
             </Button>
           )}
@@ -301,7 +301,7 @@ export function UnifiedResultsTable({
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ArrowSquareOut className="h-4 w-4" weight="bold" />
                       </a>
                     </TableCell>
                   </TableRow>

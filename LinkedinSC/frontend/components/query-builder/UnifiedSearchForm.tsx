@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import { searchRaw, type RawSearchResponse } from "@/lib/api";
-import { Loader2, Search } from "lucide-react";
+import { SpinnerGap, MagnifyingGlass } from "@phosphor-icons/react";
 
 /**
  * UnifiedSearchForm Component
@@ -218,12 +218,12 @@ export function UnifiedSearchForm({
         >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <SpinnerGap className="mr-2 h-4 w-4 animate-spin" weight="bold" />
               Searching...
             </>
           ) : (
             <>
-              <Search className="mr-2 h-4 w-4" />
+              <MagnifyingGlass className="mr-2 h-4 w-4" weight="bold" />
               Search LinkedIn
             </>
           )}
