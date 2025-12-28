@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SiteFilter } from "@/components/query-builder/SiteFilter";
 import { QueryPresets } from "@/components/query-builder/QueryPresets";
 import { QueryPreview } from "@/components/query-builder/QueryPreview";
 import { UnifiedSearchForm } from "@/components/query-builder/UnifiedSearchForm";
@@ -35,13 +34,14 @@ export default function QueryBuilderPage() {
       </header>
 
       <div className="w-full max-w-4xl mx-auto space-y-6">
-        <SiteFilter />
+        <div className="sticky top-4 z-10">
+          <QueryPreview />
+        </div>
         <QueryPresets />
         <UnifiedSearchForm
           onSearchComplete={handleSearchComplete}
           onSearchError={handleSearchError}
         />
-        <QueryPreview />
 
         <ProgressBar isLoading={isLoading} />
 

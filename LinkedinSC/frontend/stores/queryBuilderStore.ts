@@ -10,22 +10,9 @@
 import { create } from 'zustand';
 import { QUERY_PRESETS, buildQueryFromPresets } from '@/config/queryPresets';
 
-// Site filter types
-export type SiteFilterType = 'all' | 'profile' | 'posts' | 'jobs' | 'company';
-
-// Site filter URL mapping
-const siteFilterMap: Record<SiteFilterType, string> = {
-  all: '',
-  profile: 'site:linkedin.com/in/',
-  posts: 'site:linkedin.com/posts/',
-  jobs: 'site:linkedin.com/jobs/',
-  company: 'site:linkedin.com/company/',
-};
-
 // Store state interface
 interface QueryBuilderState {
   baseQuery: string;
-  siteFilter: SiteFilterType;
   activePresetIds: string[];
   location: string;
   country: string;
@@ -36,7 +23,6 @@ interface QueryBuilderState {
 // Store actions interface
 interface QueryBuilderActions {
   setBaseQuery: (query: string) => void;
-  setSiteFilter: (filter: SiteFilterType) => void;
   togglePreset: (id: string) => void;
   clearPresets: () => void;
   setLocation: (location: string) => void;
@@ -53,7 +39,6 @@ type QueryBuilderStore = QueryBuilderState & QueryBuilderActions;
 // Initial state values
 const initialState: QueryBuilderState = {
   baseQuery: '',
-  siteFilter: 'all',
   activePresetIds: [],
   location: '',
   country: '',
@@ -68,8 +53,6 @@ export const useQueryBuilderStore = create<QueryBuilderStore>((set, get) => ({
 
   // Actions
   setBaseQuery: (query) => set({ baseQuery: query }),
-
-  setSiteFilter: (filter) => set({ siteFilter: filter }),
 
   togglePreset: (id) =>
     set((state) => {
@@ -95,24 +78,18 @@ export const useQueryBuilderStore = create<QueryBuilderStore>((set, get) => ({
     const state = get();
     const parts: string[] = [];
 
-    // 1. Add site filter first (if not 'all')
-    const siteFilterQuery = siteFilterMap[state.siteFilter];
-    if (siteFilterQuery) {
-      parts.push(siteFilterQuery);
-    }
-
-    // 2. Add base query
+    // 1. Add base query
     if (state.baseQuery.trim()) {
       parts.push(state.baseQuery.trim());
     }
 
-    // 3. Add active presets using the config helper
+    // 2. Add active presets using the config helper
     const presetQuery = buildQueryFromPresets(state.activePresetIds);
     if (presetQuery) {
       parts.push(presetQuery);
     }
 
-    // 4. Add location (if specified)
+    // 3. Add location (if specified)
     if (state.location.trim()) {
       parts.push(state.location.trim());
     }

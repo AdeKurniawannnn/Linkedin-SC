@@ -12,26 +12,11 @@ describe('queryBuilderStore', () => {
     it('has correct default values', () => {
       const state = useQueryBuilderStore.getState()
       expect(state.baseQuery).toBe('')
-      expect(state.siteFilter).toBe('all')
       expect(state.activePresetIds).toEqual([])
       expect(state.location).toBe('')
       expect(state.country).toBe('')
       expect(state.language).toBe('en')
       expect(state.maxResults).toBe(10)
-    })
-  })
-
-  describe('siteFilter', () => {
-    it('has default value of "all"', () => {
-      expect(useQueryBuilderStore.getState().siteFilter).toBe('all')
-    })
-
-    it('updates siteFilter correctly', () => {
-      useQueryBuilderStore.getState().setSiteFilter('profile')
-      expect(useQueryBuilderStore.getState().siteFilter).toBe('profile')
-
-      useQueryBuilderStore.getState().setSiteFilter('jobs')
-      expect(useQueryBuilderStore.getState().siteFilter).toBe('jobs')
     })
   })
 
@@ -107,42 +92,6 @@ describe('queryBuilderStore', () => {
       expect(useQueryBuilderStore.getState().buildQuery()).toBe('software engineer')
     })
 
-    it('builds query with site filter', () => {
-      useQueryBuilderStore.getState().setSiteFilter('profile')
-      useQueryBuilderStore.getState().setBaseQuery('developer')
-
-      const query = useQueryBuilderStore.getState().buildQuery()
-      expect(query).toBe('site:linkedin.com/in/ developer')
-    })
-
-    it('builds query with profile site filter', () => {
-      useQueryBuilderStore.getState().setSiteFilter('profile')
-
-      const query = useQueryBuilderStore.getState().buildQuery()
-      expect(query).toBe('site:linkedin.com/in/')
-    })
-
-    it('builds query with posts site filter', () => {
-      useQueryBuilderStore.getState().setSiteFilter('posts')
-
-      const query = useQueryBuilderStore.getState().buildQuery()
-      expect(query).toBe('site:linkedin.com/posts/')
-    })
-
-    it('builds query with jobs site filter', () => {
-      useQueryBuilderStore.getState().setSiteFilter('jobs')
-
-      const query = useQueryBuilderStore.getState().buildQuery()
-      expect(query).toBe('site:linkedin.com/jobs/')
-    })
-
-    it('builds query with company site filter', () => {
-      useQueryBuilderStore.getState().setSiteFilter('company')
-
-      const query = useQueryBuilderStore.getState().buildQuery()
-      expect(query).toBe('site:linkedin.com/company/')
-    })
-
     it('builds query with active presets', () => {
       useQueryBuilderStore.getState().togglePreset('seniority_senior')
 
@@ -167,7 +116,6 @@ describe('queryBuilderStore', () => {
     })
 
     it('builds complex query with all components', () => {
-      useQueryBuilderStore.getState().setSiteFilter('profile')
       useQueryBuilderStore.getState().setBaseQuery('developer')
       useQueryBuilderStore.getState().togglePreset('seniority_senior')
       useQueryBuilderStore.getState().togglePreset('exclude_recruiter')
@@ -175,7 +123,6 @@ describe('queryBuilderStore', () => {
 
       const query = useQueryBuilderStore.getState().buildQuery()
 
-      expect(query).toContain('site:linkedin.com/in/')
       expect(query).toContain('developer')
       expect(query).toContain('("Senior" OR "Sr." OR "Lead")')
       expect(query).toContain('-recruiter')
@@ -187,7 +134,6 @@ describe('queryBuilderStore', () => {
     it('resets everything to initial state', () => {
       // Set some values
       useQueryBuilderStore.getState().setBaseQuery('test query')
-      useQueryBuilderStore.getState().setSiteFilter('jobs')
       useQueryBuilderStore.getState().togglePreset('seniority_senior')
       useQueryBuilderStore.getState().setLocation('Singapore')
 
@@ -197,7 +143,6 @@ describe('queryBuilderStore', () => {
       // Verify complete reset
       const state = useQueryBuilderStore.getState()
       expect(state.baseQuery).toBe('')
-      expect(state.siteFilter).toBe('all')
       expect(state.activePresetIds).toEqual([])
       expect(state.location).toBe('')
     })

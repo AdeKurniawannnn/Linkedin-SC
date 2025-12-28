@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import {
   QUERY_PRESETS,
@@ -64,25 +65,33 @@ export function QueryPresets() {
                 </p>
               </div>
 
-              {/* Preset Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {presets.map((preset) => {
-                  const isActive = activePresetIds.includes(preset.id);
-
-                  return (
-                    <Button
-                      key={preset.id}
-                      variant={isActive ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => togglePreset(preset.id)}
-                      title={preset.description}
-                      className="text-xs"
-                    >
-                      {preset.label}
-                    </Button>
-                  );
-                })}
-              </div>
+              {/* Preset Toggle Group */}
+              <ToggleGroup
+                type="multiple"
+                variant="outline"
+                size="sm"
+                value={presets.filter(p => activePresetIds.includes(p.id)).map(p => p.id)}
+                onValueChange={(values) => {
+                  // Find which preset was toggled by comparing current vs new values
+                  const currentIds = presets.filter(p => activePresetIds.includes(p.id)).map(p => p.id);
+                  const added = values.find(v => !currentIds.includes(v));
+                  const removed = currentIds.find(v => !values.includes(v));
+                  if (added) togglePreset(added);
+                  if (removed) togglePreset(removed);
+                }}
+                className="flex flex-wrap gap-1"
+              >
+                {presets.map((preset) => (
+                  <ToggleGroupItem
+                    key={preset.id}
+                    value={preset.id}
+                    title={preset.description}
+                    className="text-xs px-3"
+                  >
+                    {preset.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
           );
         })}
