@@ -7,9 +7,10 @@ from models import (
     ScrapeDetailRequest, ScrapeDetailResponse,
     PostsSearchRequest, PostsSearchResponse,
     JobsSearchRequest, JobsSearchResponse,
-    AllSearchRequest, AllSearchResponse
+    AllSearchRequest, AllSearchResponse,
+    RawQueryRequest, UnifiedSearchResponse
 )
-from services.scraper import search_linkedin_profiles, scrape_company_details, search_linkedin_posts, search_linkedin_jobs, search_linkedin_all
+from services.scraper import search_linkedin_profiles, scrape_company_details, search_linkedin_posts, search_linkedin_jobs, search_linkedin_all, search_raw_query
 
 router = APIRouter()
 
@@ -214,6 +215,46 @@ async def search_all(request: AllSearchRequest):
         )
 
 
+@router.post("/search-raw", response_model=UnifiedSearchResponse)
+async def search_raw(request: RawQueryRequest):
+    """
+    Execute a raw query and return unified results with LinkedIn content type detection.
+
+    This endpoint accepts a pre-composed query string directly and returns unified
+    results with automatic LinkedIn content type detection (profile, company, post, job, other).
+
+    Example request:
+    ```json
+    {
+        "query": "software engineer site:linkedin.com/in/",
+        "country": "id",
+        "language": "id",
+        "max_results": 50
+    }
+    ```
+    """
+    try:
+        result = await search_raw_query(
+            query=request.query,
+            country=request.country,
+            language=request.language,
+            max_results=request.max_results
+        )
+        return result
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "error": "Raw query search failed",
+                "detail": str(e)
+            }
+        )
+
+
 @router.get("/test")
 def test_endpoint():
     """Test endpoint untuk verify API works"""
@@ -225,6 +266,7 @@ def test_endpoint():
             "search-posts": "POST /api/search-posts",
             "search-jobs": "POST /api/search-jobs",
             "search-all": "POST /api/search-all",
+            "search-raw": "POST /api/search-raw",
             "test": "GET /api/test"
         }
     }

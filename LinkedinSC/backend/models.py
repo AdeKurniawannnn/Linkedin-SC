@@ -366,3 +366,73 @@ class AllSearchResponse(BaseModel):
                 }
             }
         }
+
+
+class RawQueryRequest(BaseModel):
+    """Request model for raw query search"""
+    query: str = Field(..., description="Pre-composed query string (e.g., 'software engineer site:linkedin.com/in/')")
+    country: str = Field(default="id", description="Country code (e.g., 'us', 'id')")
+    language: str = Field(default="id", description="Language code (e.g., 'en', 'id')")
+    max_results: int = Field(default=50, ge=1, le=100, description="Maximum number of results to return (1-100)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "software engineer site:linkedin.com/in/",
+                "country": "id",
+                "language": "id",
+                "max_results": 50
+            }
+        }
+
+
+class UnifiedSearchResult(BaseModel):
+    """Single unified result with LinkedIn content type detection"""
+    url: str
+    title: str
+    description: str
+    type: str  # profile, company, post, job, other
+    rank: int
+    # Optional fields for enhanced metadata
+    author_name: Optional[str] = None
+    company_name: Optional[str] = None
+    followers: Optional[int] = None
+    location: Optional[str] = None
+
+
+class UnifiedSearchResponse(BaseModel):
+    """Response model for unified raw query search"""
+    success: bool
+    query: str
+    total_results: int
+    results: List[UnifiedSearchResult]
+    metadata: dict
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "query": "software engineer site:linkedin.com/in/",
+                "total_results": 50,
+                "results": [
+                    {
+                        "url": "https://linkedin.com/in/johndoe",
+                        "title": "John Doe - Software Engineer",
+                        "description": "Senior Software Engineer at Tech Company...",
+                        "type": "profile",
+                        "rank": 1,
+                        "author_name": "John Doe",
+                        "company_name": None,
+                        "followers": None,
+                        "location": "Jakarta"
+                    }
+                ],
+                "metadata": {
+                    "country": "id",
+                    "language": "id",
+                    "max_results": 50,
+                    "pages_fetched": 5,
+                    "time_taken_seconds": 3.45
+                }
+            }
+        }

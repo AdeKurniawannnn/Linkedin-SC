@@ -39,7 +39,38 @@ if not HAS_SERP:
             break
 
 from serp.client import SerpAggregator
-from models import LinkedInProfile, CompanyDetail, RelatedCompany, EmployeeInfo, LinkedInPost, LinkedInJob, LinkedInAllResult
+from models import LinkedInProfile, CompanyDetail, RelatedCompany, EmployeeInfo, LinkedInPost, LinkedInJob, LinkedInAllResult, UnifiedSearchResult
+
+
+def detect_linkedin_type(url: str) -> str:
+    """
+    Detect LinkedIn content type from URL pattern.
+
+    Args:
+        url: LinkedIn URL to classify
+
+    Returns:
+        Content type: "profile", "company", "post", "job", or "other"
+    """
+    url_lower = url.lower()
+
+    # Check for post URLs first (more specific patterns)
+    if "/posts/" in url_lower or "/feed/" in url_lower:
+        return "post"
+
+    # Check for job URLs
+    if "/jobs/" in url_lower:
+        return "job"
+
+    # Check for profile URLs (must check after posts to avoid /in/username/posts/)
+    if "/in/" in url_lower:
+        return "profile"
+
+    # Check for company URLs (must check after posts to avoid /company/name/posts/)
+    if "/company/" in url_lower:
+        return "company"
+
+    return "other"
 
 
 def parse_company_description(description: str) -> Dict[str, Optional[any]]:
@@ -974,6 +1005,133 @@ async def search_linkedin_all(
             "keywords": keywords,
             "country": country,
             "language": language,
+            "pages_fetched": pages_scraped,
+            "time_taken_seconds": round(time_taken, 2)
+        }
+    }
+
+
+async def search_raw_query(
+    query: str,
+    country: str = "id",
+    language: str = "id",
+    max_results: int = 50
+) -> Dict:
+    """
+    Execute a raw query via SerpAggregator and return unified results with type detection.
+
+    Args:
+        query: Pre-composed query string (e.g., 'software engineer site:linkedin.com/in/')
+        country: Country code (default: 'id')
+        language: Language code (default: 'id')
+        max_results: Maximum number of results to return (default: 50)
+
+    Returns:
+        Dict with unified search results including LinkedIn content type detection
+    """
+    start_time = time.time()
+
+    # Calculate pages needed (10 results per page)
+    max_pages = max(1, (max_results + 9) // 10)
+
+    # Initialize SERP client
+    async with SerpAggregator() as client:
+        result = await client.search(
+            query=query,
+            country=country,
+            language=language,
+            max_pages=max_pages,
+            use_cache=False
+        )
+
+        pages_scraped = result.pages_fetched
+
+        print(f"[DEBUG] Raw Query: {query}")
+        print(f"[DEBUG] Total organic results: {len(result.organic)}")
+
+        # Parse and classify results
+        unified_results = []
+        for organic_result in result.organic:
+            url = organic_result.link
+            content_type = detect_linkedin_type(url)
+
+            # Extract optional metadata based on type
+            author_name = None
+            company_name = None
+            followers = None
+            location = None
+
+            description = organic_result.description or ""
+
+            # Extract metadata for profiles
+            if content_type == "profile":
+                # Parse name from title (format: "Name - Headline")
+                title_parts = organic_result.title.split(' - ', 1)
+                author_name = title_parts[0].strip()
+
+            # Extract metadata for companies
+            elif content_type == "company":
+                parsed_data = parse_company_description(description)
+                company_name = organic_result.title.split(' | ')[0].strip()
+                followers = parsed_data.get('followers')
+                location = parsed_data.get('location') or parsed_data.get('headquarters')
+
+            # Extract metadata for posts
+            elif content_type == "post":
+                # Format: "AuthorName on LinkedIn: ..."
+                title_parts = organic_result.title.split(" on LinkedIn:", 1)
+                if len(title_parts) > 1:
+                    author_name = title_parts[0].strip()
+                else:
+                    # Try to extract from URL
+                    match = re.search(r'/posts/([^_/]+)', url)
+                    if match:
+                        author_name = match.group(1).replace('-', ' ').title()
+
+            # Extract metadata for jobs
+            elif content_type == "job":
+                # Format variations: "Job Title - Company Name" or "Job Title at Company Name"
+                if " - " in organic_result.title:
+                    parts = organic_result.title.split(" - ", 1)
+                    if len(parts) > 1:
+                        company_name = parts[1].strip()
+                elif " at " in organic_result.title:
+                    parts = organic_result.title.split(" at ", 1)
+                    if len(parts) > 1:
+                        company_name = parts[1].strip()
+
+            unified_result = UnifiedSearchResult(
+                url=url,
+                title=organic_result.title,
+                description=description[:500],
+                type=content_type,
+                rank=organic_result.rank,
+                author_name=author_name,
+                company_name=company_name,
+                followers=followers,
+                location=location
+            )
+            unified_results.append(unified_result)
+
+            # Stop once we have enough results
+            if len(unified_results) >= max_results:
+                break
+
+        # Truncate to exact max_results
+        if len(unified_results) > max_results:
+            unified_results = unified_results[:max_results]
+
+    time_taken = time.time() - start_time
+
+    return {
+        "success": True,
+        "query": query,
+        "total_results": len(unified_results),
+        "results": [r.model_dump() for r in unified_results],
+        "metadata": {
+            "country": country,
+            "language": language,
+            "max_results": max_results,
             "pages_fetched": pages_scraped,
             "time_taken_seconds": round(time_taken, 2)
         }
