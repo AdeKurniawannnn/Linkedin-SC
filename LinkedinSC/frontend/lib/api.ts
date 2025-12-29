@@ -53,7 +53,33 @@ export interface RawSearchResponse {
   };
 }
 
-export const searchRaw = async (params: RawSearchRequest): Promise<RawSearchResponse> => {
-  const response = await apiClient.post<RawSearchResponse>('/search-raw', params);
+/**
+ * Search LinkedIn profiles using raw query
+ * @param params - Search parameters
+ * @param signal - Optional AbortSignal for request cancellation
+ */
+export const searchRaw = async (
+  params: RawSearchRequest,
+  signal?: AbortSignal
+): Promise<RawSearchResponse> => {
+  const response = await apiClient.post<RawSearchResponse>('/search-raw', params, {
+    signal,
+  });
   return response.data;
 };
+
+/**
+ * Check if an error is an abort/cancellation error
+ */
+export function isAbortError(error: unknown): boolean {
+  if (axios.isCancel(error)) {
+    return true;
+  }
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true;
+  }
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true;
+  }
+  return false;
+}

@@ -6,9 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { DownloadSimple, ArrowSquareOut, Buildings, ArrowsOut, X } from "@phosphor-icons/react";
+import { DownloadSimple, Buildings, ArrowsOut, X } from "@phosphor-icons/react";
 import type { UnifiedResult, RawSearchResponse } from "@/lib/api";
+import { ResultRow } from "@/components/ResultRow";
 
 /**
  * UnifiedResultsTable Component
@@ -30,50 +30,42 @@ interface UnifiedResultsTableProps {
   onScrapeCompanies?: (urls: string[]) => void;
 }
 
-// Type badge color mapping
-const TYPE_BADGE_COLORS: Record<string, string> = {
-  profile: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  company: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  post: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  job: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-  other: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
-};
-
 export function UnifiedResultsTable({
   results,
   metadata,
   onScrapeCompanies,
 }: UnifiedResultsTableProps) {
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Toggle single row selection
-  const handleToggle = (index: number) => {
-    const newSelected = new Set(selectedIndices);
-    if (newSelected.has(index)) {
-      newSelected.delete(index);
-    } else {
-      newSelected.add(index);
-    }
-    setSelectedIndices(newSelected);
+  const handleToggle = (url: string) => {
+    setSelectedUrls((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(url)) {
+        newSelected.delete(url);
+      } else {
+        newSelected.add(url);
+      }
+      return newSelected;
+    });
   };
 
   // Toggle all rows
   const handleSelectAll = () => {
-    if (selectedIndices.size === results.length) {
-      setSelectedIndices(new Set());
+    if (selectedUrls.size === results.length) {
+      setSelectedUrls(new Set());
     } else {
-      setSelectedIndices(new Set(results.map((_, index) => index)));
+      setSelectedUrls(new Set(results.map((result) => result.url)));
     }
   };
 
   // Get selected company URLs
   const selectedCompanyUrls = useMemo(() => {
-    return Array.from(selectedIndices)
-      .map((index) => results[index])
-      .filter((result) => result.type === "company")
+    return results
+      .filter((result) => selectedUrls.has(result.url) && result.type === "company")
       .map((result) => result.url);
-  }, [selectedIndices, results]);
+  }, [selectedUrls, results]);
 
   // Handle CSV export
   const handleExportCSV = () => {
@@ -98,7 +90,7 @@ export function UnifiedResultsTable({
 
       return [
         index + 1,
-        selectedIndices.has(index) ? "Yes" : "No",
+        selectedUrls.has(result.url) ? "Yes" : "No",
         result.type.toUpperCase(),
         `"${result.title.replace(/"/g, '""')}"`,
         `"${descriptionPreview.replace(/"/g, '""').replace(/\n/g, " ")}"`,
@@ -176,16 +168,16 @@ export function UnifiedResultsTable({
                 {" "}({metadata.pages_fetched} pages)
               </>
             )}
-            {selectedIndices.size > 0 && (
+            {selectedUrls.size > 0 && (
               <span className="ml-2 text-blue-600 font-medium">
-                ({selectedIndices.size} selected)
+                ({selectedUrls.size} selected)
               </span>
             )}
           </CardDescription>
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSelectAll} variant="outline" size="sm">
-            {selectedIndices.size === results.length
+            {selectedUrls.size === results.length
               ? "Deselect All"
               : "Select All"}
           </Button>
@@ -222,12 +214,13 @@ export function UnifiedResultsTable({
                 <TableHead className="w-12 text-center">#</TableHead>
                 <TableHead className="w-12 text-center">
                   <Checkbox
-                    checked={
-                      results.length > 0 &&
-                      selectedIndices.size === results.length
-                    }
-                    onCheckedChange={handleSelectAll}
-                  />
+                      checked={
+                        results.length > 0 &&
+                        selectedUrls.size === results.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all results"
+                    />
                 </TableHead>
                 <TableHead className="w-32">Type</TableHead>
                 <TableHead className="w-1/4">Title</TableHead>
@@ -236,87 +229,15 @@ export function UnifiedResultsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {results.map((result, index) => {
-                const descriptionPreview =
-                  result.description.length > 200
-                    ? result.description.substring(0, 200) + "..."
-                    : result.description;
-
-                const badgeColor =
-                  TYPE_BADGE_COLORS[result.type] || TYPE_BADGE_COLORS.other;
-
-                return (
-                  <TableRow
-                    key={index}
-                    className={
-                      selectedIndices.has(index)
-                        ? "bg-blue-50 dark:bg-blue-900/20"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }
-                  >
-                    <TableCell className="font-medium text-center">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Checkbox
-                        checked={selectedIndices.has(index)}
-                        onCheckedChange={() => handleToggle(index)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`text-xs px-2 py-1 rounded font-medium ${badgeColor}`}
-                      >
-                        {result.type.toUpperCase()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                        {result.title}
-                      </div>
-                      {result.author_name && (
-                        <div className="text-xs text-gray-500">
-                          by {result.author_name}
-                        </div>
-                      )}
-                      {result.company_name && (
-                        <div className="text-xs text-gray-500">
-                          at {result.company_name}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
-                        {descriptionPreview}
-                      </div>
-                      {(result.followers || result.location) && (
-                        <div className="flex gap-2 mt-1">
-                          {result.followers && (
-                            <Badge variant="secondary" className="text-xs">
-                              {result.followers.toLocaleString()} followers
-                            </Badge>
-                          )}
-                          {result.location && (
-                            <Badge variant="outline" className="text-xs">
-                              {result.location}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <a
-                        href={result.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                      >
-                        <ArrowSquareOut className="h-4 w-4" weight="bold" />
-                      </a>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {results.map((result, index) => (
+                <ResultRow
+                  key={result.url}
+                  result={result}
+                  index={index + 1}
+                  isSelected={selectedUrls.has(result.url)}
+                  onToggle={handleToggle}
+                />
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -343,16 +264,16 @@ export function UnifiedResultsTable({
                         {" "}({metadata.pages_fetched} pages)
                       </>
                     )}
-                    {selectedIndices.size > 0 && (
+                    {selectedUrls.size > 0 && (
                       <span className="ml-2 text-blue-600 font-medium">
-                        ({selectedIndices.size} selected)
+                        ({selectedUrls.size} selected)
                       </span>
                     )}
                   </DialogDescription>
                 </div>
                 <div className="flex gap-2 items-center">
                   <Button onClick={handleSelectAll} variant="outline" size="sm">
-                    {selectedIndices.size === results.length
+                    {selectedUrls.size === results.length
                       ? "Deselect All"
                       : "Select All"}
                   </Button>
@@ -392,12 +313,13 @@ export function UnifiedResultsTable({
                       <TableHead className="w-[50px] text-center">#</TableHead>
                       <TableHead className="w-[50px] text-center">
                         <Checkbox
-                          checked={
-                            results.length > 0 &&
-                            selectedIndices.size === results.length
-                          }
-                          onCheckedChange={handleSelectAll}
-                        />
+                      checked={
+                        results.length > 0 &&
+                        selectedUrls.size === results.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all results"
+                    />
                       </TableHead>
                       <TableHead className="w-[100px]">Type</TableHead>
                       <TableHead className="w-[25%]">Title</TableHead>
@@ -406,87 +328,15 @@ export function UnifiedResultsTable({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {results.map((result, index) => {
-                      const descriptionPreview =
-                        result.description.length > 200
-                          ? result.description.substring(0, 200) + "..."
-                          : result.description;
-
-                      const badgeColor =
-                        TYPE_BADGE_COLORS[result.type] || TYPE_BADGE_COLORS.other;
-
-                      return (
-                        <TableRow
-                          key={index}
-                          className={
-                            selectedIndices.has(index)
-                              ? "bg-blue-50 dark:bg-blue-900/20"
-                              : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                          }
-                        >
-                          <TableCell className="font-medium text-center">
-                            {index + 1}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={selectedIndices.has(index)}
-                              onCheckedChange={() => handleToggle(index)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`text-xs px-2 py-1 rounded font-medium ${badgeColor}`}
-                            >
-                              {result.type.toUpperCase()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                              {result.title}
-                            </div>
-                            {result.author_name && (
-                              <div className="text-xs text-gray-500">
-                                by {result.author_name}
-                              </div>
-                            )}
-                            {result.company_name && (
-                              <div className="text-xs text-gray-500">
-                                at {result.company_name}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
-                              {descriptionPreview}
-                            </div>
-                            {(result.followers || result.location) && (
-                              <div className="flex gap-2 mt-1">
-                                {result.followers && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {result.followers.toLocaleString()} followers
-                                  </Badge>
-                                )}
-                                {result.location && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {result.location}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                            >
-                              <ArrowSquareOut className="h-4 w-4" weight="bold" />
-                            </a>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {results.map((result, index) => (
+                      <ResultRow
+                        key={result.url}
+                        result={result}
+                        index={index + 1}
+                        isSelected={selectedUrls.has(result.url)}
+                        onToggle={handleToggle}
+                      />
+                    ))}
                   </TableBody>
                 </Table>
               </div>

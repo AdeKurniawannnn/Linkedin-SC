@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useDeferredValue, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import { Copy, ArrowSquareOut, Check, Warning } from "@phosphor-icons/react";
+import { toast } from "sonner";
+import { SaveSearchDialog } from "./SaveSearchDialog";
+import {
+  GOOGLE_MAX_QUERY_LENGTH,
+  GOOGLE_QUERY_WARNING_THRESHOLD,
+} from "@/config/searchOptions";
 
-// Google search query character limits
-const GOOGLE_MAX_QUERY_LENGTH = 2048;
-const WARNING_THRESHOLD = Math.floor(GOOGLE_MAX_QUERY_LENGTH * 0.9); // 90% = 1843 chars
+// Calculate warning threshold
+const WARNING_THRESHOLD = Math.floor(GOOGLE_MAX_QUERY_LENGTH * GOOGLE_QUERY_WARNING_THRESHOLD);
 
 /**
  * QueryPreview Component
@@ -25,15 +30,29 @@ const WARNING_THRESHOLD = Math.floor(GOOGLE_MAX_QUERY_LENGTH * 0.9); // 90% = 18
  */
 export function QueryPreview() {
   const [copied, setCopied] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering conditional content after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Subscribe to the query result directly (not the function)
   // This ensures the component re-renders when any state affecting the query changes
-  const composedQuery = useQueryBuilderStore((state) => state.buildQuery());
+  const rawQuery = useQueryBuilderStore((state) => state.buildQuery());
 
-  // Calculate warning state
-  const queryLength = composedQuery.length;
-  const isOverLimit = queryLength > GOOGLE_MAX_QUERY_LENGTH;
-  const isNearLimit = queryLength >= WARNING_THRESHOLD && !isOverLimit;
+  // Debounce query updates using useDeferredValue to prevent re-renders on every keystroke
+  const composedQuery = useDeferredValue(rawQuery);
+
+  // Memoize warning state calculations to prevent unnecessary recalculations
+  const { queryLength, isOverLimit, isNearLimit } = useMemo(() => {
+    const length = composedQuery.length;
+    return {
+      queryLength: length,
+      isOverLimit: length > GOOGLE_MAX_QUERY_LENGTH,
+      isNearLimit: length >= WARNING_THRESHOLD && length <= GOOGLE_MAX_QUERY_LENGTH,
+    };
+  }, [composedQuery]);
 
   // Copy to clipboard handler
   const handleCopy = useCallback(async () => {
@@ -43,8 +62,10 @@ export function QueryPreview() {
       await navigator.clipboard.writeText(composedQuery);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success("Query copied to clipboard");
     } catch (err) {
       console.error("Failed to copy:", err);
+      toast.error("Failed to copy query");
     }
   }, [composedQuery]);
 
@@ -62,7 +83,7 @@ export function QueryPreview() {
         <CardTitle className="text-base">Query Preview</CardTitle>
       </CardHeader>
       <CardContent>
-        {composedQuery ? (
+        {isMounted && composedQuery ? (
           <div className="flex gap-3 items-start" style={{ height: "37px" }}>
             <div className="flex-1">
               <div
@@ -120,6 +141,7 @@ export function QueryPreview() {
               </p>
             </div>
             <div className="flex flex-row gap-2">
+              <SaveSearchDialog disabled={!composedQuery} />
               <Button
                 variant="outline"
                 size="icon"

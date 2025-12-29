@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
-import { searchRaw, type RawSearchResponse } from "@/lib/api";
-import { SpinnerGap, MagnifyingGlass } from "@phosphor-icons/react";
+import { searchRaw, isAbortError, type RawSearchResponse } from "@/lib/api";
+import { SpinnerGap, MagnifyingGlass, X } from "@phosphor-icons/react";
+import {
+  COUNTRY_OPTIONS,
+  LANGUAGE_OPTIONS,
+  DEFAULT_COUNTRY,
+  DEFAULT_LANGUAGE,
+  DEFAULT_MAX_RESULTS,
+  MIN_RESULTS,
+  MAX_RESULTS,
+} from "@/config/searchOptions";
+import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
+import { toast } from "sonner";
+import {
+  validateSearchForm,
+  fieldValidators,
+} from "@/lib/validation/searchSchema";
 
 /**
  * UnifiedSearchForm Component
@@ -36,37 +51,14 @@ interface UnifiedSearchFormProps {
   onSearchError?: (error: Error) => void;
 }
 
-// Country options
-const COUNTRY_OPTIONS = [
-  { value: "id", label: "Indonesia" },
-  { value: "sg", label: "Singapore" },
-  { value: "my", label: "Malaysia" },
-  { value: "us", label: "United States" },
-  { value: "uk", label: "United Kingdom" },
-  { value: "au", label: "Australia" },
-  { value: "in", label: "India" },
-  { value: "ph", label: "Philippines" },
-  { value: "th", label: "Thailand" },
-  { value: "vn", label: "Vietnam" },
-];
-
-// Language options
-const LANGUAGE_OPTIONS = [
-  { value: "id", label: "Indonesian" },
-  { value: "en", label: "English" },
-  { value: "ms", label: "Malay" },
-  { value: "zh", label: "Chinese" },
-  { value: "ja", label: "Japanese" },
-  { value: "ko", label: "Korean" },
-  { value: "th", label: "Thai" },
-  { value: "vi", label: "Vietnamese" },
-];
-
 export function UnifiedSearchForm({
   onSearchComplete,
   onSearchError,
 }: UnifiedSearchFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>({});
+  const baseQueryInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Zustand store
   const baseQuery = useQueryBuilderStore((state) => state.baseQuery);
@@ -80,34 +72,108 @@ export function UnifiedSearchForm({
   const maxResults = useQueryBuilderStore((state) => state.maxResults);
   const setMaxResults = useQueryBuilderStore((state) => state.setMaxResults);
   const buildQuery = useQueryBuilderStore((state) => state.buildQuery);
+  const clearPresets = useQueryBuilderStore((state) => state.clearPresets);
+  const resetAll = useQueryBuilderStore((state) => state.resetAll);
+
+  // Focus handler for keyboard shortcut
+  const handleFocusSearch = useCallback(() => {
+    baseQueryInputRef.current?.focus();
+    baseQueryInputRef.current?.select();
+  }, []);
+
+  // Field blur validation handlers
+  const handleBaseQueryBlur = useCallback(() => {
+    const error = fieldValidators.baseQuery(baseQuery);
+    setFieldErrors((prev) => ({ ...prev, baseQuery: error }));
+  }, [baseQuery]);
+
+  const handleLocationBlur = useCallback(() => {
+    const error = fieldValidators.location(location);
+    setFieldErrors((prev) => ({ ...prev, location: error }));
+  }, [location]);
+
+  const handleMaxResultsBlur = useCallback(() => {
+    const error = fieldValidators.maxResults(maxResults || DEFAULT_MAX_RESULTS);
+    setFieldErrors((prev) => ({ ...prev, maxResults: error }));
+  }, [maxResults]);
+
+  // Cancel ongoing search
+  const handleCancel = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      toast.info("Search cancelled");
+    }
+  }, []);
 
   // Handle search submission
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     const query = buildQuery();
 
-    if (!query.trim()) {
-      onSearchError?.(new Error("Please enter a search query or select presets"));
+    // Validate form before submission
+    const validationErrors = validateSearchForm(
+      {
+        baseQuery,
+        location,
+        country: country || DEFAULT_COUNTRY,
+        language: language || DEFAULT_LANGUAGE,
+        maxResults: maxResults || DEFAULT_MAX_RESULTS,
+      },
+      query
+    );
+
+    if (validationErrors.length > 0) {
+      // Show first error as toast
+      toast.error("Validation Error", {
+        description: validationErrors[0],
+      });
+      onSearchError?.(new Error(validationErrors[0]));
       return;
     }
 
+    // Cancel any ongoing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
     setIsLoading(true);
 
     try {
-      const response = await searchRaw({
-        query,
-        country: country || "id",
-        language: language || "id",
-        max_results: maxResults || 50,
-      });
+      const response = await searchRaw(
+        {
+          query,
+          country: country || DEFAULT_COUNTRY,
+          language: language || DEFAULT_LANGUAGE,
+          max_results: maxResults || DEFAULT_MAX_RESULTS,
+        },
+        abortControllerRef.current.signal
+      );
 
       onSearchComplete?.(response);
     } catch (error) {
+      // Don't report cancellation as an error
+      if (isAbortError(error)) {
+        console.log("Search was cancelled");
+        return;
+      }
       console.error("Search error:", error);
       onSearchError?.(error instanceof Error ? error : new Error("Search failed"));
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
-  };
+  }, [buildQuery, baseQuery, location, country, language, maxResults, onSearchComplete, onSearchError]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSearch: handleSearch,
+    onFocusSearch: handleFocusSearch,
+    onEscape: clearPresets,
+    enabled: !isLoading,
+  });
 
   // Handle max results change
   const handleMaxResultsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,14 +196,21 @@ export function UnifiedSearchForm({
         <div className="space-y-2">
           <Label htmlFor="baseQuery">Base Query</Label>
           <Input
+            ref={baseQueryInputRef}
             id="baseQuery"
             placeholder="Enter your search keywords..."
             value={baseQuery}
             onChange={(e) => setBaseQuery(e.target.value)}
+            onBlur={handleBaseQueryBlur}
+            className={fieldErrors.baseQuery ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
-          <p className="text-xs text-gray-500">
-            Keywords to search for (combined with selected presets)
-          </p>
+          {fieldErrors.baseQuery ? (
+            <p className="text-xs text-red-500">{fieldErrors.baseQuery}</p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Keywords to search for (combined with selected presets)
+            </p>
+          )}
         </div>
 
         {/* Location Input */}
@@ -148,7 +221,12 @@ export function UnifiedSearchForm({
             placeholder="e.g., Jakarta, Singapore"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+            onBlur={handleLocationBlur}
+            className={fieldErrors.location ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
+          {fieldErrors.location && (
+            <p className="text-xs text-red-500">{fieldErrors.location}</p>
+          )}
         </div>
 
         {/* Country and Language Row */}
@@ -157,7 +235,7 @@ export function UnifiedSearchForm({
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
             <Select
-              value={country || "id"}
+              value={country || DEFAULT_COUNTRY}
               onValueChange={(value) => setCountry(value)}
             >
               <SelectTrigger id="country">
@@ -177,7 +255,7 @@ export function UnifiedSearchForm({
           <div className="space-y-2">
             <Label htmlFor="language">Language</Label>
             <Select
-              value={language || "id"}
+              value={language || DEFAULT_LANGUAGE}
               onValueChange={(value) => setLanguage(value)}
             >
               <SelectTrigger id="language">
@@ -200,34 +278,63 @@ export function UnifiedSearchForm({
           <Input
             id="maxResults"
             type="number"
-            min={1}
-            max={200}
-            value={maxResults || 50}
+            min={MIN_RESULTS}
+            max={MAX_RESULTS}
+            value={maxResults || DEFAULT_MAX_RESULTS}
             onChange={handleMaxResultsChange}
+            onBlur={handleMaxResultsBlur}
+            className={fieldErrors.maxResults ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
-          <p className="text-xs text-gray-500">
-            Maximum number of results to fetch (1-200)
-          </p>
+          {fieldErrors.maxResults ? (
+            <p className="text-xs text-red-500">{fieldErrors.maxResults}</p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Maximum number of results to fetch ({MIN_RESULTS}-{MAX_RESULTS})
+            </p>
+          )}
         </div>
 
-        {/* Search Button */}
-        <Button
-          onClick={handleSearch}
-          disabled={isLoading}
-          className="w-full"
-        >
-          {isLoading ? (
-            <>
-              <SpinnerGap className="mr-2 h-4 w-4 animate-spin" weight="bold" />
-              Searching...
-            </>
-          ) : (
-            <>
-              <MagnifyingGlass className="mr-2 h-4 w-4" weight="bold" />
-              Search LinkedIn
-            </>
+        {/* Search/Cancel Buttons */}
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="flex-1"
+            title="Search LinkedIn (⌘+Enter)"
+          >
+            {isLoading ? (
+              <>
+                <SpinnerGap className="mr-2 h-4 w-4 animate-spin" weight="bold" />
+                Searching...
+              </>
+            ) : (
+              <>
+                <MagnifyingGlass className="mr-2 h-4 w-4" weight="bold" />
+                Search LinkedIn
+                <kbd className="ml-2 hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  <span className="text-xs">⌘</span>↵
+                </kbd>
+              </>
+            )}
+          </Button>
+          {isLoading && (
+            <Button
+              onClick={handleCancel}
+              variant="destructive"
+              title="Cancel search"
+            >
+              <X className="mr-2 h-4 w-4" weight="bold" />
+              Cancel
+            </Button>
           )}
-        </Button>
+        </div>
+
+        {/* Keyboard Shortcuts Hint */}
+        <p className="text-xs text-center text-gray-400">
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">⌘K</kbd> focus •{" "}
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">⌘↵</kbd> search •{" "}
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[10px]">Esc</kbd> clear
+        </p>
       </CardContent>
     </Card>
   );
