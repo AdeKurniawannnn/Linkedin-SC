@@ -8,6 +8,7 @@
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { QUERY_PRESETS, buildQueryFromPresets } from '@/config/queryPresets';
 
 // Store state interface
@@ -46,60 +47,77 @@ const initialState: QueryBuilderState = {
   maxResults: 10,
 };
 
-// Create the store
-export const useQueryBuilderStore = create<QueryBuilderStore>((set, get) => ({
-  // Initial state
-  ...initialState,
+// Create the store with sessionStorage persistence
+export const useQueryBuilderStore = create<QueryBuilderStore>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      ...initialState,
 
-  // Actions
-  setBaseQuery: (query) => set({ baseQuery: query }),
+      // Actions
+      setBaseQuery: (query) => set({ baseQuery: query }),
 
-  togglePreset: (id) =>
-    set((state) => {
-      const isActive = state.activePresetIds.includes(id);
-      return {
-        activePresetIds: isActive
-          ? state.activePresetIds.filter((presetId) => presetId !== id)
-          : [...state.activePresetIds, id],
-      };
+      togglePreset: (id) =>
+        set((state) => {
+          const isActive = state.activePresetIds.includes(id);
+          return {
+            activePresetIds: isActive
+              ? state.activePresetIds.filter((presetId) => presetId !== id)
+              : [...state.activePresetIds, id],
+          };
+        }),
+
+      clearPresets: () => set({ activePresetIds: [] }),
+
+      setLocation: (location) => set({ location }),
+
+      setCountry: (country) => set({ country }),
+
+      setLanguage: (language) => set({ language }),
+
+      setMaxResults: (count) => set({ maxResults: count }),
+
+      buildQuery: () => {
+        const state = get();
+        const parts: string[] = [];
+
+        // 1. Add base query
+        if (state.baseQuery.trim()) {
+          parts.push(state.baseQuery.trim());
+        }
+
+        // 2. Add active presets using the config helper
+        const presetQuery = buildQueryFromPresets(state.activePresetIds);
+        if (presetQuery) {
+          parts.push(presetQuery);
+        }
+
+        // 3. Add location (if specified)
+        if (state.location.trim()) {
+          parts.push(state.location.trim());
+        }
+
+        // Compose final query
+        return parts.join(' ').trim();
+      },
+
+      resetAll: () => set(initialState),
     }),
-
-  clearPresets: () => set({ activePresetIds: [] }),
-
-  setLocation: (location) => set({ location }),
-
-  setCountry: (country) => set({ country }),
-
-  setLanguage: (language) => set({ language }),
-
-  setMaxResults: (count) => set({ maxResults: count }),
-
-  buildQuery: () => {
-    const state = get();
-    const parts: string[] = [];
-
-    // 1. Add base query
-    if (state.baseQuery.trim()) {
-      parts.push(state.baseQuery.trim());
+    {
+      name: 'query-builder-session',
+      storage: createJSONStorage(() => sessionStorage),
+      // Only persist state fields, not actions
+      partialize: (state) => ({
+        baseQuery: state.baseQuery,
+        activePresetIds: state.activePresetIds,
+        location: state.location,
+        country: state.country,
+        language: state.language,
+        maxResults: state.maxResults,
+      }),
     }
-
-    // 2. Add active presets using the config helper
-    const presetQuery = buildQueryFromPresets(state.activePresetIds);
-    if (presetQuery) {
-      parts.push(presetQuery);
-    }
-
-    // 3. Add location (if specified)
-    if (state.location.trim()) {
-      parts.push(state.location.trim());
-    }
-
-    // Compose final query
-    return parts.join(' ').trim();
-  },
-
-  resetAll: () => set(initialState),
-}));
+  )
+);
 
 // Export types for external use
 export type { QueryBuilderState, QueryBuilderActions, QueryBuilderStore };

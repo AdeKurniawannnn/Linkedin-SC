@@ -1,37 +1,50 @@
 "use client";
 
-import { useState } from "react";
 import { QueryPresets } from "@/components/query-builder/QueryPresets";
 import { QueryPreview } from "@/components/query-builder/QueryPreview";
 import { UnifiedSearchForm } from "@/components/query-builder/UnifiedSearchForm";
 import { UnifiedResultsTable } from "@/components/UnifiedResultsTable";
 import { ProgressBar } from "@/components/ProgressBar";
 import { StatusIndicator } from "@/components/StatusIndicator";
-import { type UnifiedResult, type RawSearchResponse } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { useResultsStore } from "@/stores/resultsStore";
+import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
+import { type RawSearchResponse } from "@/lib/api";
+import { TrashSimple } from "@phosphor-icons/react";
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState<UnifiedResult[] | null>(null);
-  const [metadata, setMetadata] = useState<RawSearchResponse['metadata'] | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  // Use persisted stores
+  const { results, metadata, error, isLoading, setResults, setError, clearResults } = useResultsStore();
+  const { resetAll: resetQueryBuilder } = useQueryBuilderStore();
 
   const handleSearchComplete = (response: RawSearchResponse) => {
-    setResults(response.results);
-    setMetadata(response.metadata);
-    setError(null);
-    setIsLoading(false);
+    setResults(response.results, response.metadata);
   };
 
   const handleSearchError = (err: Error) => {
     setError(err.message || "Search failed");
-    setIsLoading(false);
+  };
+
+  const handleClearAll = () => {
+    clearResults();
+    resetQueryBuilder();
   };
 
   return (
     <div className="min-h-screen bg-background py-12 px-4">
       {/* Header */}
       <header className="text-center mb-12 relative">
-        <div className="absolute top-0 right-4">
+        <div className="absolute top-0 right-4 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearAll}
+            className="text-muted-foreground hover:text-destructive"
+            title="Clear all data"
+          >
+            <TrashSimple className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
           <StatusIndicator />
         </div>
         <h1 className="text-4xl font-bold text-foreground mb-2">
@@ -42,7 +55,7 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="w-full max-w-4xl mx-auto space-y-6">
+      <div className="w-full max-w-7xl mx-auto space-y-6">
         {/* Sticky Query Preview */}
         <div className="sticky top-4 z-10">
           <QueryPreview />
@@ -71,7 +84,7 @@ export default function Home() {
         )}
 
         {/* Results Table */}
-        {results && <UnifiedResultsTable results={results} metadata={metadata} />}
+        {results && <UnifiedResultsTable results={results} metadata={metadata ?? undefined} />}
       </div>
 
       {/* Footer */}

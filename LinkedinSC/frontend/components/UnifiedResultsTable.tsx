@@ -3,10 +3,11 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { DownloadSimple, ArrowSquareOut, Buildings } from "@phosphor-icons/react";
+import { DownloadSimple, ArrowSquareOut, Buildings, ArrowsOut, X } from "@phosphor-icons/react";
 import type { UnifiedResult, RawSearchResponse } from "@/lib/api";
 
 /**
@@ -44,6 +45,7 @@ export function UnifiedResultsTable({
   onScrapeCompanies,
 }: UnifiedResultsTableProps) {
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Toggle single row selection
   const handleToggle = (index: number) => {
@@ -132,7 +134,7 @@ export function UnifiedResultsTable({
   // Empty state
   if (results.length === 0) {
     return (
-      <Card className="w-full max-w-6xl mx-auto mt-8">
+      <Card className="w-full max-w-7xl mx-auto mt-8">
         <CardContent className="py-12 text-center">
           <div className="text-gray-400 mb-4">
             <svg
@@ -161,7 +163,7 @@ export function UnifiedResultsTable({
   }
 
   return (
-    <Card className="w-full max-w-6xl mx-auto mt-8">
+    <Card className="w-full max-w-7xl mx-auto mt-8">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-2xl">Search Results</CardTitle>
@@ -202,6 +204,14 @@ export function UnifiedResultsTable({
               Scrape Companies ({selectedCompanyUrls.length})
             </Button>
           )}
+          <Button
+            onClick={() => setIsFullscreen(true)}
+            variant="outline"
+            size="sm"
+            title="View fullscreen"
+          >
+            <ArrowsOut className="h-4 w-4" weight="bold" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -219,10 +229,10 @@ export function UnifiedResultsTable({
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead className="w-24">Type</TableHead>
-                <TableHead className="w-80">Title</TableHead>
-                <TableHead className="min-w-96">Description</TableHead>
-                <TableHead className="w-16 text-center">Link</TableHead>
+                <TableHead className="w-32">Type</TableHead>
+                <TableHead className="w-1/4">Title</TableHead>
+                <TableHead className="w-1/2">Description</TableHead>
+                <TableHead className="w-20 text-center">Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -311,6 +321,179 @@ export function UnifiedResultsTable({
           </Table>
         </div>
       </CardContent>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent
+          showCloseButton={false}
+          className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !w-screen !h-screen !max-w-none !max-h-none !m-0 !p-0 !rounded-none !border-0"
+        >
+          <div className="flex flex-col h-full">
+            {/* Fullscreen Header */}
+            <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-background">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl">Search Results</DialogTitle>
+                  <DialogDescription>
+                    Found {results.length} LinkedIn results
+                    {metadata && (
+                      <>
+                        {" "}
+                        in {metadata.time_taken_seconds.toFixed(2)}s
+                        {" "}({metadata.pages_fetched} pages)
+                      </>
+                    )}
+                    {selectedIndices.size > 0 && (
+                      <span className="ml-2 text-blue-600 font-medium">
+                        ({selectedIndices.size} selected)
+                      </span>
+                    )}
+                  </DialogDescription>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button onClick={handleSelectAll} variant="outline" size="sm">
+                    {selectedIndices.size === results.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </Button>
+                  <Button onClick={handleExportCSV} variant="outline" size="sm">
+                    <DownloadSimple className="mr-2 h-4 w-4" weight="bold" />
+                    Export CSV
+                  </Button>
+                  {onScrapeCompanies && (
+                    <Button
+                      onClick={handleScrapeCompanies}
+                      variant="default"
+                      size="sm"
+                      disabled={selectedCompanyUrls.length === 0}
+                    >
+                      <Buildings className="mr-2 h-4 w-4" weight="bold" />
+                      Scrape Companies ({selectedCompanyUrls.length})
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setIsFullscreen(false)}
+                    variant="ghost"
+                    size="sm"
+                    className="ml-2"
+                  >
+                    <X className="h-5 w-5" weight="bold" />
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Fullscreen Table Content */}
+            <div className="flex-1 overflow-auto p-6">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="w-full table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px] text-center">#</TableHead>
+                      <TableHead className="w-[50px] text-center">
+                        <Checkbox
+                          checked={
+                            results.length > 0 &&
+                            selectedIndices.size === results.length
+                          }
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
+                      <TableHead className="w-[100px]">Type</TableHead>
+                      <TableHead className="w-[25%]">Title</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-[60px] text-center">Link</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result, index) => {
+                      const descriptionPreview =
+                        result.description.length > 200
+                          ? result.description.substring(0, 200) + "..."
+                          : result.description;
+
+                      const badgeColor =
+                        TYPE_BADGE_COLORS[result.type] || TYPE_BADGE_COLORS.other;
+
+                      return (
+                        <TableRow
+                          key={index}
+                          className={
+                            selectedIndices.has(index)
+                              ? "bg-blue-50 dark:bg-blue-900/20"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                          }
+                        >
+                          <TableCell className="font-medium text-center">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={selectedIndices.has(index)}
+                              onCheckedChange={() => handleToggle(index)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`text-xs px-2 py-1 rounded font-medium ${badgeColor}`}
+                            >
+                              {result.type.toUpperCase()}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                              {result.title}
+                            </div>
+                            {result.author_name && (
+                              <div className="text-xs text-gray-500">
+                                by {result.author_name}
+                              </div>
+                            )}
+                            {result.company_name && (
+                              <div className="text-xs text-gray-500">
+                                at {result.company_name}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+                              {descriptionPreview}
+                            </div>
+                            {(result.followers || result.location) && (
+                              <div className="flex gap-2 mt-1">
+                                {result.followers && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {result.followers.toLocaleString()} followers
+                                  </Badge>
+                                )}
+                                {result.location && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {result.location}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                            >
+                              <ArrowSquareOut className="h-4 w-4" weight="bold" />
+                            </a>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
