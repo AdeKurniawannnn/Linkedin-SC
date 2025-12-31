@@ -20,15 +20,19 @@ import { toast } from "sonner";
 
 export default function Home() {
   // Use persisted stores
-  const { results, metadata, error, isLoading, setResults, setError, clearResults } = useResultsStore();
+  const { results, aggregatedMetadata, error, isLoading, appendResults, setError, clearResults } = useResultsStore();
   const { resetAll: resetQueryBuilder } = useQueryBuilderStore();
   const addHistoryEntry = useSearchHistoryStore((state) => state.addEntry);
 
   const handleSearchComplete = (response: RawSearchResponse) => {
-    setResults(response.results, response.metadata);
+    // Get the composed query string for aggregation tracking
+    const queryState = useQueryBuilderStore.getState();
+    const composedQuery = queryState.buildQuery();
+
+    // Append results with deduplication (aggregates across multiple queries)
+    appendResults(response.results, response.metadata, composedQuery);
 
     // Capture search to history
-    const queryState = useQueryBuilderStore.getState();
     addHistoryEntry(
       {
         baseQuery: queryState.baseQuery,
@@ -37,7 +41,7 @@ export default function Home() {
         country: queryState.country,
         language: queryState.language,
         maxResults: queryState.maxResults,
-        composedQuery: queryState.buildQuery(),
+        composedQuery,
       },
       response
     );
@@ -124,7 +128,7 @@ export default function Home() {
           )}
 
           {/* Results Table */}
-          {results && <UnifiedResultsTable results={results} metadata={metadata ?? undefined} />}
+          {results && <UnifiedResultsTable results={results} metadata={aggregatedMetadata ?? undefined} />}
         </div>
       </ErrorBoundary>
 

@@ -7,26 +7,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DownloadSimple, Buildings, ArrowsOut, X } from "@phosphor-icons/react";
-import type { UnifiedResult, RawSearchResponse } from "@/lib/api";
+import type { AggregatedResult, AggregatedMetadata } from "@/lib/api";
 import { ResultRow } from "@/components/ResultRow";
 
 /**
  * UnifiedResultsTable Component
  *
  * Displays search results with type badges and selection capabilities.
- * Supports CSV export and company scraping for selected URLs.
+ * Supports multi-query aggregation, CSV export, and company scraping.
  *
  * Features:
- * - Table with columns: #, Type (badge), Title, Description, URL
+ * - Table with columns: #, Type (badge), Query, Title, Description, URL
  * - Type badges with colors: profile=blue, company=purple, post=green, job=orange, other=gray
+ * - Query column with tooltip showing all source queries
  * - Row selection checkboxes
- * - Export CSV button
+ * - Export CSV button (includes query column)
  * - Scrape Companies button (only for selected company URLs)
  */
 
 interface UnifiedResultsTableProps {
-  results: UnifiedResult[];
-  metadata?: RawSearchResponse["metadata"];
+  results: AggregatedResult[];
+  metadata?: AggregatedMetadata;
   onScrapeCompanies?: (urls: string[]) => void;
 }
 
@@ -73,6 +74,7 @@ export function UnifiedResultsTable({
       "No",
       "Selected",
       "Type",
+      "Query",
       "Title",
       "Description",
       "URL",
@@ -88,10 +90,14 @@ export function UnifiedResultsTable({
           ? result.description.substring(0, 150) + "..."
           : result.description;
 
+      // Join multiple source queries with pipe separator
+      const queryString = result.sourceQueries?.join(" | ") || "";
+
       return [
         index + 1,
         selectedUrls.has(result.url) ? "Yes" : "No",
         result.type.toUpperCase(),
+        `"${queryString.replace(/"/g, '""')}"`,
         `"${result.title.replace(/"/g, '""')}"`,
         `"${descriptionPreview.replace(/"/g, '""').replace(/\n/g, " ")}"`,
         result.url,
@@ -160,13 +166,22 @@ export function UnifiedResultsTable({
         <div>
           <CardTitle className="text-2xl">Search Results</CardTitle>
           <CardDescription>
-            Found {results.length} LinkedIn results
+            Found {metadata?.totalUniqueResults ?? results.length} unique results
+            {metadata && metadata.queryCount > 1 && (
+              <span className="text-purple-600 font-medium">
+                {" "}from {metadata.queryCount} queries
+              </span>
+            )}
             {metadata && (
               <>
-                {" "}
-                in {metadata.time_taken_seconds.toFixed(2)}s
-                {" "}({metadata.pages_fetched} pages)
+                {" "}in {metadata.totalTimeSeconds.toFixed(2)}s
+                {" "}({metadata.totalPagesFetched} pages)
               </>
+            )}
+            {metadata && metadata.totalRawResults > metadata.totalUniqueResults && (
+              <span className="ml-2 text-orange-600">
+                ({metadata.totalRawResults - metadata.totalUniqueResults} duplicates removed)
+              </span>
             )}
             {selectedUrls.size > 0 && (
               <span className="ml-2 text-blue-600 font-medium">
@@ -222,10 +237,11 @@ export function UnifiedResultsTable({
                       aria-label="Select all results"
                     />
                 </TableHead>
-                <TableHead className="w-32">Type</TableHead>
+                <TableHead className="w-24">Type</TableHead>
+                <TableHead className="w-48">Query</TableHead>
                 <TableHead className="w-1/4">Title</TableHead>
-                <TableHead className="w-1/2">Description</TableHead>
-                <TableHead className="w-20 text-center">Link</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-16 text-center">Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -236,6 +252,7 @@ export function UnifiedResultsTable({
                   index={index + 1}
                   isSelected={selectedUrls.has(result.url)}
                   onToggle={handleToggle}
+                  sourceQueries={result.sourceQueries}
                 />
               ))}
             </TableBody>
@@ -256,13 +273,22 @@ export function UnifiedResultsTable({
                 <div>
                   <DialogTitle className="text-2xl">Search Results</DialogTitle>
                   <DialogDescription>
-                    Found {results.length} LinkedIn results
+                    Found {metadata?.totalUniqueResults ?? results.length} unique results
+                    {metadata && metadata.queryCount > 1 && (
+                      <span className="text-purple-600 font-medium">
+                        {" "}from {metadata.queryCount} queries
+                      </span>
+                    )}
                     {metadata && (
                       <>
-                        {" "}
-                        in {metadata.time_taken_seconds.toFixed(2)}s
-                        {" "}({metadata.pages_fetched} pages)
+                        {" "}in {metadata.totalTimeSeconds.toFixed(2)}s
+                        {" "}({metadata.totalPagesFetched} pages)
                       </>
+                    )}
+                    {metadata && metadata.totalRawResults > metadata.totalUniqueResults && (
+                      <span className="ml-2 text-orange-600">
+                        ({metadata.totalRawResults - metadata.totalUniqueResults} duplicates removed)
+                      </span>
                     )}
                     {selectedUrls.size > 0 && (
                       <span className="ml-2 text-blue-600 font-medium">
@@ -321,8 +347,9 @@ export function UnifiedResultsTable({
                       aria-label="Select all results"
                     />
                       </TableHead>
-                      <TableHead className="w-[100px]">Type</TableHead>
-                      <TableHead className="w-[25%]">Title</TableHead>
+                      <TableHead className="w-[80px]">Type</TableHead>
+                      <TableHead className="w-[200px]">Query</TableHead>
+                      <TableHead className="w-[20%]">Title</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="w-[60px] text-center">Link</TableHead>
                     </TableRow>
@@ -335,6 +362,7 @@ export function UnifiedResultsTable({
                         index={index + 1}
                         isSelected={selectedUrls.has(result.url)}
                         onToggle={handleToggle}
+                        sourceQueries={result.sourceQueries}
                       />
                     ))}
                   </TableBody>

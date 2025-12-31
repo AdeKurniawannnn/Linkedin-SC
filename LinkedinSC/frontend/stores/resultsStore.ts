@@ -2,24 +2,27 @@
  * Zustand Store for Search Results
  *
  * Manages search results state with sessionStorage persistence.
- * Data survives page refresh but clears when the browser tab is closed.
+ * Supports multi-query aggregation with URL-based deduplication.
  */
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { UnifiedResult, RawSearchResponse } from '@/lib/api';
+import type { UnifiedResult, RawSearchResponse, AggregatedResult, AggregatedMetadata } from '@/lib/api';
 
 // Store state interface
 interface ResultsState {
-  results: UnifiedResult[] | null;
-  metadata: RawSearchResponse['metadata'] | null;
+  results: AggregatedResult[] | null;
+  aggregatedMetadata: AggregatedMetadata | null;
   error: string | null;
   isLoading: boolean;
 }
 
 // Store actions interface
 interface ResultsActions {
-  setResults: (results: UnifiedResult[], metadata: RawSearchResponse['metadata']) => void;
+  /** Append results with deduplication (primary method for searches) */
+  appendResults: (results: UnifiedResult[], metadata: RawSearchResponse['metadata'], query: string) => void;
+  /** Legacy: Replace all results (for backward compatibility) */
+  setResults: (results: UnifiedResult[], metadata: RawSearchResponse['metadata'], query: string) => void;
   setError: (error: string) => void;
   setLoading: (isLoading: boolean) => void;
   clearResults: () => void;
@@ -31,32 +34,143 @@ type ResultsStore = ResultsState & ResultsActions;
 // Initial state values
 const initialState: ResultsState = {
   results: null,
-  metadata: null,
+  aggregatedMetadata: null,
   error: null,
   isLoading: false,
 };
 
+/**
+ * Deduplicate results by URL, merging source queries for duplicates
+ */
+function deduplicateResults(
+  existing: AggregatedResult[],
+  incoming: UnifiedResult[],
+  query: string
+): AggregatedResult[] {
+  const resultMap = new Map<string, AggregatedResult>();
+
+  // Add existing results to map
+  existing.forEach((result) => {
+    resultMap.set(result.url, { ...result });
+  });
+
+  // Process incoming results
+  incoming.forEach((result) => {
+    const existingResult = resultMap.get(result.url);
+
+    if (existingResult) {
+      // Merge: add query to sourceQueries if not already present
+      if (!existingResult.sourceQueries.includes(query)) {
+        existingResult.sourceQueries = [...existingResult.sourceQueries, query];
+      }
+    } else {
+      // New result: create aggregated version
+      resultMap.set(result.url, {
+        ...result,
+        sourceQueries: [query],
+        firstSeenAt: Date.now(),
+      });
+    }
+  });
+
+  return Array.from(resultMap.values());
+}
+
+/**
+ * Aggregate metadata across multiple queries
+ */
+function aggregateMetadata(
+  existing: AggregatedMetadata | null,
+  newMeta: RawSearchResponse['metadata'],
+  query: string,
+  rawResultCount: number,
+  uniqueResultCount: number
+): AggregatedMetadata {
+  if (!existing) {
+    return {
+      totalUniqueResults: uniqueResultCount,
+      totalRawResults: rawResultCount,
+      queryCount: 1,
+      queries: [query],
+      totalTimeSeconds: newMeta.time_taken_seconds,
+      totalPagesFetched: newMeta.pages_fetched,
+    };
+  }
+
+  return {
+    totalUniqueResults: uniqueResultCount,
+    totalRawResults: existing.totalRawResults + rawResultCount,
+    queryCount: existing.queries.includes(query) ? existing.queryCount : existing.queryCount + 1,
+    queries: existing.queries.includes(query) ? existing.queries : [...existing.queries, query],
+    totalTimeSeconds: existing.totalTimeSeconds + newMeta.time_taken_seconds,
+    totalPagesFetched: existing.totalPagesFetched + newMeta.pages_fetched,
+  };
+}
+
+/**
+ * Convert UnifiedResult[] to AggregatedResult[] for initial results
+ */
+function toAggregatedResults(results: UnifiedResult[], query: string): AggregatedResult[] {
+  return results.map((r) => ({
+    ...r,
+    sourceQueries: [query],
+    firstSeenAt: Date.now(),
+  }));
+}
+
 // Create the store with sessionStorage persistence
 export const useResultsStore = create<ResultsStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state
       ...initialState,
 
-      // Actions
-      setResults: (results, metadata) =>
-        set({
-          results,
+      // Append results with deduplication
+      appendResults: (results, metadata, query) => {
+        const state = get();
+        const existingResults = state.results || [];
+
+        const deduplicated = deduplicateResults(existingResults, results, query);
+        const newMetadata = aggregateMetadata(
+          state.aggregatedMetadata,
           metadata,
+          query,
+          results.length,
+          deduplicated.length
+        );
+
+        set({
+          results: deduplicated,
+          aggregatedMetadata: newMetadata,
           error: null,
           isLoading: false,
-        }),
+        });
+      },
+
+      // Replace all results (legacy behavior, still uses aggregated types)
+      setResults: (results, metadata, query) => {
+        const aggregated = toAggregatedResults(results, query);
+
+        set({
+          results: aggregated,
+          aggregatedMetadata: {
+            totalUniqueResults: aggregated.length,
+            totalRawResults: results.length,
+            queryCount: 1,
+            queries: [query],
+            totalTimeSeconds: metadata.time_taken_seconds,
+            totalPagesFetched: metadata.pages_fetched,
+          },
+          error: null,
+          isLoading: false,
+        });
+      },
 
       setError: (error) =>
         set({
           error,
           results: null,
-          metadata: null,
+          aggregatedMetadata: null,
           isLoading: false,
         }),
 
@@ -70,7 +184,7 @@ export const useResultsStore = create<ResultsStore>()(
       // Only persist these fields (not isLoading)
       partialize: (state) => ({
         results: state.results,
-        metadata: state.metadata,
+        aggregatedMetadata: state.aggregatedMetadata,
         error: state.error,
       }),
     }

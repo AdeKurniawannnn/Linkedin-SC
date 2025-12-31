@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import type { UnifiedResult } from "@/lib/api";
+import { QueryCell } from "@/components/QueryCell";
 
 /**
  * ResultRow Component
@@ -37,6 +38,8 @@ interface ResultRowProps {
   onToggle: (url: string) => void;
   /** Maximum characters for description preview */
   maxDescriptionLength?: number;
+  /** Source queries for this result (for multi-query aggregation) */
+  sourceQueries?: string[];
 }
 
 /**
@@ -63,6 +66,7 @@ export const ResultRow = memo(function ResultRow({
   isSelected,
   onToggle,
   maxDescriptionLength = 200,
+  sourceQueries,
 }: ResultRowProps) {
   const descriptionPreview = truncateText(result.description, maxDescriptionLength);
   const badgeColor = getBadgeColor(result.type);
@@ -99,6 +103,13 @@ export const ResultRow = memo(function ResultRow({
           {result.type.toUpperCase()}
         </span>
       </TableCell>
+
+      {/* Query Source */}
+      {sourceQueries && sourceQueries.length > 0 && (
+        <TableCell>
+          <QueryCell queries={sourceQueries} />
+        </TableCell>
+      )}
 
       {/* Title & Author/Company */}
       <TableCell>
