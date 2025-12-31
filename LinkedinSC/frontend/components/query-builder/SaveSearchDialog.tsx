@@ -103,8 +103,8 @@ export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
   };
 
   const defaultTrigger = (
-    <Button variant="outline" size="icon" className="h-9 w-9" title="Save search" disabled={disabled}>
-      <Bookmark className="h-4 w-4" />
+    <Button variant="outline" size="icon" className="h-14 w-14" title="Save search" disabled={disabled}>
+      <Bookmark className="h-5 w-5" />
     </Button>
   );
 

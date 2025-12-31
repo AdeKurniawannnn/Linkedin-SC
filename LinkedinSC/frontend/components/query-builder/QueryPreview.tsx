@@ -79,12 +79,12 @@ export function QueryPreview() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-0">
         <CardTitle className="text-base">Query Preview</CardTitle>
       </CardHeader>
       <CardContent>
         {isMounted && composedQuery ? (
-          <div className="flex gap-3 items-start" style={{ height: "37px" }}>
+          <div className="flex gap-3 items-start">
             <div className="flex-1">
               <div
                 className={`bg-gray-50 dark:bg-gray-900 rounded-md p-4 border-2 transition-colors ${
@@ -94,7 +94,6 @@ export function QueryPreview() {
                     ? "border-yellow-500 dark:border-yellow-600"
                     : "border-gray-200 dark:border-gray-700"
                 }`}
-                style={{ height: "37px" }}
               >
                 <code className="font-mono text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
                   {composedQuery}
@@ -148,12 +147,12 @@ export function QueryPreview() {
                 onClick={handleCopy}
                 disabled={!composedQuery}
                 title={copied ? "Copied!" : "Copy to clipboard"}
-                className="h-9 w-9"
+                className="h-14 w-14"
               >
                 {copied ? (
-                  <Check className="h-4 w-4" weight="bold" />
+                  <Check className="h-5 w-5" weight="bold" />
                 ) : (
-                  <Copy className="h-4 w-4" weight="bold" />
+                  <Copy className="h-5 w-5" weight="bold" />
                 )}
               </Button>
               <Button
@@ -162,9 +161,9 @@ export function QueryPreview() {
                 onClick={handleOpenInGoogle}
                 disabled={!composedQuery}
                 title="Open in Google"
-                className="h-9 w-9"
+                className="h-14 w-14"
               >
-                <ArrowSquareOut className="h-4 w-4" weight="bold" />
+                <ArrowSquareOut className="h-5 w-5" weight="bold" />
               </Button>
             </div>
           </div>

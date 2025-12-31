@@ -40,6 +40,34 @@ export interface UnifiedResult {
   location?: string;
 }
 
+/**
+ * Extended result type with source query tracking for aggregation
+ */
+export interface AggregatedResult extends UnifiedResult {
+  /** Array of queries that produced this result */
+  sourceQueries: string[];
+  /** Timestamp when first seen */
+  firstSeenAt: number;
+}
+
+/**
+ * Aggregated metadata across multiple search queries
+ */
+export interface AggregatedMetadata {
+  /** Total unique results after deduplication */
+  totalUniqueResults: number;
+  /** Total results before deduplication */
+  totalRawResults: number;
+  /** Number of queries executed */
+  queryCount: number;
+  /** List of all queries executed */
+  queries: string[];
+  /** Total time across all searches */
+  totalTimeSeconds: number;
+  /** Total pages fetched across all searches */
+  totalPagesFetched: number;
+}
+
 export interface RawSearchResponse {
   success: boolean;
   query: string;
