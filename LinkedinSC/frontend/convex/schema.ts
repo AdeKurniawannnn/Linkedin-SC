@@ -1,6 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Helper for optional fields that may be null from API
+const optionalString = v.optional(v.union(v.string(), v.null()));
+const optionalNumber = v.optional(v.union(v.number(), v.null()));
+
 // Unified result type validator
 const unifiedResultValidator = v.object({
   url: v.string(),
@@ -14,10 +18,10 @@ const unifiedResultValidator = v.object({
     v.literal("other")
   ),
   rank: v.number(),
-  author_name: v.optional(v.string()),
-  company_name: v.optional(v.string()),
-  followers: v.optional(v.number()),
-  location: v.optional(v.string()),
+  author_name: optionalString,
+  company_name: optionalString,
+  followers: optionalNumber,
+  location: optionalString,
 });
 
 // Search query parameters validator

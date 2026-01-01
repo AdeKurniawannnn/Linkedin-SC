@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // Validators matching schema
+// Helper for optional fields that may be null from API
+const optionalString = v.optional(v.union(v.string(), v.null()));
+const optionalNumber = v.optional(v.union(v.number(), v.null()));
+
 const unifiedResultValidator = v.object({
   url: v.string(),
   title: v.string(),
@@ -14,10 +18,10 @@ const unifiedResultValidator = v.object({
     v.literal("other")
   ),
   rank: v.number(),
-  author_name: v.optional(v.string()),
-  company_name: v.optional(v.string()),
-  followers: v.optional(v.number()),
-  location: v.optional(v.string()),
+  author_name: optionalString,
+  company_name: optionalString,
+  followers: optionalNumber,
+  location: optionalString,
 });
 
 const searchQueryValidator = v.object({
@@ -33,6 +37,7 @@ const searchQueryValidator = v.object({
 const searchMetadataValidator = v.object({
   country: v.string(),
   language: v.string(),
+  max_results: v.number(),
   pages_fetched: v.number(),
   time_taken_seconds: v.number(),
 });
