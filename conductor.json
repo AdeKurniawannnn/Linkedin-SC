@@ -1,0 +1,8 @@
+{
+    "scripts": {
+        "setup": "make install && [ -f \"$CONDUCTOR_ROOT_PATH/LinkedinSC/backend/.env\" ] && ln -sf \"$CONDUCTOR_ROOT_PATH/LinkedinSC/backend/.env\" LinkedinSC/backend/.env; [ -f \"$CONDUCTOR_ROOT_PATH/LinkedinSC/frontend/.env.local\" ] && ln -sf \"$CONDUCTOR_ROOT_PATH/LinkedinSC/frontend/.env.local\" LinkedinSC/frontend/.env.local || true",
+        "run": "make dev",
+        "archive": "make clean; rm -rf LinkedinSC/frontend/.next LinkedinSC/backend/__pycache__ 2>/dev/null || true"
+    },
+    "runScriptMode": "nonconcurrent"
+}
