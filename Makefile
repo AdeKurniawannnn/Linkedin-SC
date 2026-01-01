@@ -1,8 +1,9 @@
-.PHONY: dev backend frontend install clean help \
+.PHONY: dev dev-convex dev-frontend dev-backend backend frontend install clean help \
         test test-all test-env \
         test-unit test-unit-v test-services test-routes test-utils test-integration test-backend-cov test-cov-term \
         test-vitest test-vitest-watch test-components test-stores test-page test-e2e test-e2e-ui test-frontend-cov \
-        test-install
+        test-install \
+        convex-push convex-deploy convex-dashboard
 
 # Get the directory where this Makefile lives (use CURDIR for paths with spaces)
 ROOT_DIR := $(CURDIR)
@@ -37,11 +38,17 @@ help:
 	@echo "$(BRIGHT_CYAN)Available commands:$(RESET)"
 	@echo ""
 	@echo "$(BOLD)Development:$(RESET)"
-	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run both frontend and backend"
-	@echo "  $(BRIGHT_BLUE)make backend$(RESET)         - Run backend only (port 8000)"
-	@echo "  $(BRIGHT_MAGENTA)make frontend$(RESET)        - Run frontend only (port 3000)"
+	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run frontend + backend + Convex (all 3)"
+	@echo "  $(BRIGHT_MAGENTA)make dev-frontend$(RESET)    - Run frontend only (port 3000)"
+	@echo "  $(BRIGHT_BLUE)make dev-backend$(RESET)     - Run backend only (port 8000)"
+	@echo "  $(BRIGHT_CYAN)make dev-convex$(RESET)      - Run Convex dev server only"
 	@echo "  $(YELLOW)make install$(RESET)         - Install all dependencies"
 	@echo "  $(RED)make clean$(RESET)           - Stop all running services"
+	@echo ""
+	@echo "$(BOLD)Convex:$(RESET)"
+	@echo "  $(BRIGHT_CYAN)make convex-push$(RESET)     - Push Convex schema (one-time)"
+	@echo "  $(CYAN)make convex-deploy$(RESET)   - Deploy Convex to production"
+	@echo "  $(DIM)make convex-dashboard$(RESET) - Open Convex dashboard"
 	@echo ""
 	@echo "$(BOLD)Testing:$(RESET)"
 	@echo "  $(BRIGHT_RED)make test-env$(RESET)        - Check env config (API keys) - run first!"
@@ -69,11 +76,11 @@ help:
 	@echo "$(BOLD)Setup:$(RESET)"
 	@echo "  $(DIM)make test-install$(RESET)    - Install test dependencies"
 
-# Run both services (clean first to avoid port conflicts)
+# Run all 3 services (clean first to avoid port conflicts)
 dev: clean
-	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting backend on $(BRIGHT_BLUE):8000$(RESET) and frontend on $(BRIGHT_MAGENTA):3000$(RESET)$(BOLD)...$(RESET)"
+	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting backend on $(BRIGHT_BLUE):8000$(RESET), frontend on $(BRIGHT_MAGENTA):3000$(RESET), and $(BRIGHT_CYAN)Convex$(RESET)$(BOLD)...$(RESET)"
 	@rm -f "$(ROOT_DIR)/LinkedinSC/frontend/.next/dev/lock" 2>/dev/null || true
-	@make -j2 backend frontend
+	@make -j3 backend frontend dev-convex
 
 # Backend (LinkedinSC)
 backend:
@@ -86,6 +93,35 @@ frontend:
 	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ FRONTEND$(RESET) $(DIM)($(BRIGHT_MAGENTA)port 3000$(RESET)$(DIM))$(RESET)"
 	@echo "$(BRIGHT_MAGENTA)→$(RESET) Starting Next.js dev server..."
 	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run dev -- --port 3000
+
+# Convex dev server
+dev-convex:
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ CONVEX$(RESET) $(DIM)(sync)$(RESET)"
+	@echo "$(BRIGHT_CYAN)→$(RESET) Starting Convex dev server..."
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npx convex dev
+
+# Aliases for consistency
+dev-frontend: frontend
+dev-backend: backend
+
+# ============================================================================
+# CONVEX DEPLOYMENT
+# ============================================================================
+
+# Push Convex schema (one-time setup)
+convex-push:
+	@echo "$(BOLD)$(BRIGHT_CYAN)→$(RESET) Pushing Convex schema..."
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npx convex dev --once
+
+# Deploy Convex to production
+convex-deploy:
+	@echo "$(BOLD)$(BRIGHT_CYAN)→$(RESET) Deploying Convex to production..."
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npx convex deploy
+
+# Open Convex dashboard
+convex-dashboard:
+	@echo "$(BRIGHT_CYAN)→$(RESET) Opening Convex dashboard..."
+	@open http://127.0.0.1:6790 2>/dev/null || xdg-open http://127.0.0.1:6790 2>/dev/null || echo "Visit: http://127.0.0.1:6790"
 
 # Install all dependencies
 install:
