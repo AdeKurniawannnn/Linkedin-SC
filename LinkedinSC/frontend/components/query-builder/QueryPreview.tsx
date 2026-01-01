@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useDeferredValue, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
+import { useBuildQueryWithPresets } from "@/hooks";
 import { Copy, ArrowSquareOut, Check, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { SaveSearchDialog } from "./SaveSearchDialog";
@@ -37,9 +37,8 @@ export function QueryPreview() {
     setIsMounted(true);
   }, []);
 
-  // Subscribe to the query result directly (not the function)
-  // This ensures the component re-renders when any state affecting the query changes
-  const rawQuery = useQueryBuilderStore((state) => state.buildQuery());
+  // Get composed query including custom presets from Convex
+  const rawQuery = useBuildQueryWithPresets();
 
   // Debounce query updates using useDeferredValue to prevent re-renders on every keystroke
   const composedQuery = useDeferredValue(rawQuery);

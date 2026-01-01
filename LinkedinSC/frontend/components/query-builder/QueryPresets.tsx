@@ -19,7 +19,7 @@ import {
 import { QuickPicks } from "./QuickPicks";
 import { LocationSelector } from "./LocationSelector";
 import { CustomPresetDialog } from "./CustomPresetDialog";
-import { useCustomPresetsStore } from "@/stores/customPresetsStore";
+import { useConvexCustomPresets } from "@/hooks";
 import { Trash2 } from "lucide-react";
 
 /**
@@ -52,9 +52,8 @@ export function QueryPresets() {
   const togglePreset = useQueryBuilderStore((state) => state.togglePreset);
   const clearPresets = useQueryBuilderStore((state) => state.clearPresets);
 
-  // Custom presets store
-  const customPresets = useCustomPresetsStore((state) => state.presets);
-  const deleteCustomPreset = useCustomPresetsStore((state) => state.deletePreset);
+  // Custom presets from Convex
+  const { presets: customPresets, deletePreset: deleteCustomPreset } = useConvexCustomPresets();
 
   // Filter presets based on search query
   const filteredPresets = useMemo(() => {
@@ -231,16 +230,16 @@ export function QueryPresets() {
                 ) : (
                   <div className="space-y-2">
                     {customPresets.map((preset) => {
-                      const isActive = activePresetIds.includes(preset.id);
+                      const isActive = activePresetIds.includes(preset._id);
                       return (
                         <div
-                          key={preset.id}
+                          key={preset._id}
                           className="flex items-center gap-2 p-2 rounded-md border bg-background"
                         >
                           <Button
                             variant={isActive ? "default" : "outline"}
                             size="sm"
-                            onClick={() => togglePreset(preset.id)}
+                            onClick={() => togglePreset(preset._id)}
                             className="flex-1 justify-start text-xs h-8"
                             title={preset.description || preset.queryFragment}
                           >
@@ -250,7 +249,7 @@ export function QueryPresets() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteCustomPreset(preset.id)}
+                            onClick={() => deleteCustomPreset(preset._id)}
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             title="Delete preset"
                           >

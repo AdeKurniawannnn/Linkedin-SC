@@ -12,7 +12,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { QUERY_PRESETS, PRESET_CATEGORIES, buildQueryFromPresets, getPresetById } from '@/config/queryPresets';
 import { buildLocationQuery } from '@/config/locationPresets';
-import { useCustomPresetsStore } from './customPresetsStore';
 
 // Store state interface
 interface QueryBuilderState {
@@ -146,16 +145,9 @@ export const useQueryBuilderStore = create<QueryBuilderStore>()(
           parts.push(presetQuery);
         }
 
-        // 3. Add active custom presets
-        const customPresetsState = useCustomPresetsStore.getState();
-        const customPresetFragments = state.activePresetIds
-          .map((id) => customPresetsState.getPresetById(id))
-          .filter((preset) => preset !== undefined)
-          .map((preset) => preset!.queryFragment);
-
-        if (customPresetFragments.length > 0) {
-          parts.push(...customPresetFragments);
-        }
+        // 3. Custom presets are now stored in Convex
+        // Their fragments are added by the component using useConvexCustomPresets hook
+        // The activePresetIds may contain Convex IDs for custom presets
 
         // 4. Add location presets (new hierarchical system)
         const locationQuery = buildLocationQuery(state.activeLocationIds);

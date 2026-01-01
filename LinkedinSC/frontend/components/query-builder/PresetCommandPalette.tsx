@@ -14,8 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
-import { useCustomPresetsStore } from "@/stores/customPresetsStore";
-import { useSavedSearchesStore } from "@/stores/savedSearchesStore";
+import { useConvexCustomPresets, useConvexSavedSearches } from "@/hooks";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   QUERY_PRESETS,
   PRESET_CATEGORIES,
@@ -49,12 +49,11 @@ export function PresetCommandPalette() {
   const activeLocationIds = useQueryBuilderStore((state) => state.activeLocationIds);
   const toggleLocation = useQueryBuilderStore((state) => state.toggleLocation);
 
-  // Custom presets store
-  const customPresets = useCustomPresetsStore((state) => state.presets);
+  // Custom presets from Convex
+  const { presets: customPresets } = useConvexCustomPresets();
 
-  // Saved searches store
-  const savedSearches = useSavedSearchesStore((state) => state.searches);
-  const loadSearch = useSavedSearchesStore((state) => state.loadSearch);
+  // Saved searches from Convex
+  const { searches: savedSearches, loadSearch } = useConvexSavedSearches();
 
   // Keyboard shortcut: Ctrl+K / Cmd+K
   useEffect(() => {
@@ -93,10 +92,9 @@ export function PresetCommandPalette() {
     toggleLocation(locationId);
   };
 
-  const handleLoadSearch = (searchId: string, searchName: string) => {
-    loadSearch(searchId);
+  const handleLoadSearch = async (searchId: Id<"savedSearches">, searchName: string) => {
+    await loadSearch(searchId);
     setOpen(false);
-    toast.success(`Loaded "${searchName}"`);
   };
 
   return (
@@ -116,9 +114,9 @@ export function PresetCommandPalette() {
             <CommandGroup heading="Saved Searches">
               {savedSearches.slice(0, 5).map((search) => (
                 <CommandItem
-                  key={search.id}
+                  key={search._id}
                   value={`saved-${search.name}`}
-                  onSelect={() => handleLoadSearch(search.id, search.name)}
+                  onSelect={() => handleLoadSearch(search._id, search.name)}
                 >
                   <span className="flex-1">{search.name}</span>
                   <Badge variant="outline" className="ml-2 text-xs">
@@ -137,14 +135,14 @@ export function PresetCommandPalette() {
             <CommandGroup heading="My Presets">
               {customPresets.map((preset) => (
                 <CommandItem
-                  key={preset.id}
+                  key={preset._id}
                   value={`custom-${preset.label}`}
-                  onSelect={() => handlePresetSelect(preset.id)}
+                  onSelect={() => handlePresetSelect(preset._id)}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      activePresetIds.includes(preset.id) ? "opacity-100" : "opacity-0"
+                      activePresetIds.includes(preset._id) ? "opacity-100" : "opacity-0"
                     )}
                   />
                   <span className="flex-1">{preset.label}</span>

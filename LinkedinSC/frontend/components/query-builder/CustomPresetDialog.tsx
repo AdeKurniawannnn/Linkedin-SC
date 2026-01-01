@@ -22,12 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCustomPresetsStore, type CustomPreset } from "@/stores/customPresetsStore";
+import { useConvexCustomPresets } from "@/hooks";
+import type { ConvexCustomPreset } from "@/lib/convex-types";
 import { PRESET_CATEGORIES, type PresetCategory } from "@/config/queryPresets";
 
 interface CustomPresetDialogProps {
   mode?: "create" | "edit";
-  preset?: CustomPreset;
+  preset?: ConvexCustomPreset;
   trigger?: React.ReactNode;
 }
 
@@ -43,8 +44,7 @@ export function CustomPresetDialog({
   trigger,
 }: CustomPresetDialogProps) {
   const [open, setOpen] = useState(false);
-  const addPreset = useCustomPresetsStore((state) => state.addPreset);
-  const updatePreset = useCustomPresetsStore((state) => state.updatePreset);
+  const { addPreset, updatePreset } = useConvexCustomPresets();
 
   const [formData, setFormData] = useState({
     category: (preset?.category || "custom") as PresetCategory | "custom",
@@ -85,18 +85,18 @@ export function CustomPresetDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
 
     if (mode === "create") {
-      addPreset({
+      await addPreset({
         category: formData.category,
         label: formData.label.trim(),
         description: formData.description.trim(),
         queryFragment: formData.queryFragment.trim(),
       });
     } else if (preset) {
-      updatePreset(preset.id, {
+      await updatePreset(preset._id, {
         category: formData.category,
         label: formData.label.trim(),
         description: formData.description.trim(),

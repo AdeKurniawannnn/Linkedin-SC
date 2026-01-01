@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useSavedSearchesStore, type SavedSearch } from "@/stores/savedSearchesStore";
+import { useConvexSavedSearches } from "@/hooks";
+import type { ConvexSavedSearch } from "@/lib/convex-types";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -29,10 +30,13 @@ import { formatDistanceToNow } from "date-fns";
 export function SavedSearchesList() {
   const [expanded, setExpanded] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const searches = useSavedSearchesStore((state) => state.searches);
-  const loadSearch = useSavedSearchesStore((state) => state.loadSearch);
-  const deleteSearch = useSavedSearchesStore((state) => state.deleteSearch);
-  const getRecentSearches = useSavedSearchesStore((state) => state.getRecentSearches);
+  const {
+    searches,
+    loadSearch,
+    deleteSearch,
+    getRecentSearches,
+    isLoading,
+  } = useConvexSavedSearches();
 
   // Prevent hydration mismatch - localStorage only available on client
   useEffect(() => {
@@ -42,18 +46,16 @@ export function SavedSearchesList() {
   const recentSearches = getRecentSearches(10);
 
   // Don't render until mounted to prevent hydration mismatch
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return null;
   }
 
-  const handleLoad = (search: SavedSearch) => {
-    loadSearch(search.id);
-    toast.success(`Loaded "${search.name}"`);
+  const handleLoad = async (search: ConvexSavedSearch) => {
+    await loadSearch(search._id);
   };
 
-  const handleDelete = (search: SavedSearch) => {
-    deleteSearch(search.id);
-    toast.success(`Deleted "${search.name}"`);
+  const handleDelete = async (search: ConvexSavedSearch) => {
+    await deleteSearch(search._id);
   };
 
   if (searches.length === 0) {
@@ -106,7 +108,7 @@ export function SavedSearchesList() {
         <CardContent className="space-y-3">
           {recentSearches.map((search) => (
             <div
-              key={search.id}
+              key={search._id}
               className="border rounded-lg p-3 space-y-2 hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-start justify-between gap-2">

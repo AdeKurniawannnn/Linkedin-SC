@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
+import { useBuildQueryWithPresets } from "@/hooks";
 import { searchRaw, isAbortError, type RawSearchResponse } from "@/lib/api";
 import { SpinnerGap, MagnifyingGlass, X } from "@phosphor-icons/react";
 import {
@@ -71,8 +72,10 @@ export function UnifiedSearchForm({
   const setLanguage = useQueryBuilderStore((state) => state.setLanguage);
   const maxResults = useQueryBuilderStore((state) => state.maxResults);
   const setMaxResults = useQueryBuilderStore((state) => state.setMaxResults);
-  const buildQuery = useQueryBuilderStore((state) => state.buildQuery);
   const clearPresets = useQueryBuilderStore((state) => state.clearPresets);
+
+  // Get composed query including custom presets from Convex
+  const composedQuery = useBuildQueryWithPresets();
   const resetAll = useQueryBuilderStore((state) => state.resetAll);
 
   // Focus handler for keyboard shortcut
@@ -109,7 +112,7 @@ export function UnifiedSearchForm({
 
   // Handle search submission
   const handleSearch = useCallback(async () => {
-    const query = buildQuery();
+    const query = composedQuery;
 
     // Validate form before submission
     const validationErrors = validateSearchForm(
@@ -165,7 +168,7 @@ export function UnifiedSearchForm({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [buildQuery, baseQuery, location, country, language, maxResults, onSearchComplete, onSearchError]);
+  }, [composedQuery, baseQuery, location, country, language, maxResults, onSearchComplete, onSearchError]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({

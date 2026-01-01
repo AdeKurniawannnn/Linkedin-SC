@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useSearchHistoryStore } from "@/stores/searchHistoryStore";
+import { useConvexSearchHistory } from "@/hooks";
+import type { Id } from "@/convex/_generated/dataModel";
 import { SearchHistoryList } from "./SearchHistoryList";
 import { SearchHistoryStorageBar } from "./SearchHistoryStorageBar";
 
@@ -30,29 +31,32 @@ export function SearchHistoryPanel() {
   const [expanded, setExpanded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  const entries = useSearchHistoryStore((state) => state.entries);
-  const getRecentEntries = useSearchHistoryStore((state) => state.getRecentEntries);
-  const loadQueryToBuilder = useSearchHistoryStore((state) => state.loadQueryToBuilder);
-  const downloadCSV = useSearchHistoryStore((state) => state.downloadCSV);
-  const deleteEntry = useSearchHistoryStore((state) => state.deleteEntry);
-  const clearHistory = useSearchHistoryStore((state) => state.clearHistory);
+  const {
+    entries,
+    getRecentEntries,
+    loadQueryToBuilder,
+    downloadCSV,
+    deleteEntry,
+    clearHistory,
+    isLoading,
+  } = useConvexSearchHistory();
 
   // Prevent hydration mismatch
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return null;
   }
 
   const recentEntries = getRecentEntries(50);
 
-  const handleRerun = (id: string) => {
+  const handleRerun = (id: Id<"searchHistory">) => {
     loadQueryToBuilder(id);
   };
 
-  const handleExport = (id: string) => {
+  const handleExport = (id: Id<"searchHistory">) => {
     downloadCSV([id]);
   };
 
@@ -60,7 +64,7 @@ export function SearchHistoryPanel() {
     downloadCSV();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: Id<"searchHistory">) => {
     deleteEntry(id);
   };
 

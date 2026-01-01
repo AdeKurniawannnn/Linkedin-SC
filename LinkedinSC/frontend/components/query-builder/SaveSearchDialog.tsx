@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useSavedSearchesStore } from "@/stores/savedSearchesStore";
+import { useConvexSavedSearches } from "@/hooks";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import { toast } from "sonner";
 
@@ -32,7 +32,7 @@ interface SaveSearchDialogProps {
  */
 export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
   const [open, setOpen] = useState(false);
-  const addSearch = useSavedSearchesStore((state) => state.addSearch);
+  const { addSearch } = useConvexSavedSearches();
 
   // Get current query builder state
   const baseQuery = useQueryBuilderStore((state) => state.baseQuery);
@@ -75,7 +75,7 @@ export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
 
     // Parse tags (comma-separated)
@@ -84,7 +84,7 @@ export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
 
-    addSearch({
+    await addSearch({
       name: formData.name.trim(),
       description: formData.description.trim(),
       tags,
@@ -98,7 +98,6 @@ export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
       },
     });
 
-    toast.success("Search saved successfully");
     setOpen(false);
   };
 

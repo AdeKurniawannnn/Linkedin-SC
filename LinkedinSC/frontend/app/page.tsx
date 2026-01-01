@@ -13,7 +13,7 @@ import { SearchHistoryPanel } from "@/components/search-history";
 import { Button } from "@/components/ui/button";
 import { useResultsStore } from "@/stores/resultsStore";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
-import { useSearchHistoryStore } from "@/stores/searchHistoryStore";
+import { useConvexSearchHistory, useBuildQueryWithPresets } from "@/hooks";
 import { type RawSearchResponse } from "@/lib/api";
 import { TrashSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -22,12 +22,14 @@ export default function Home() {
   // Use persisted stores
   const { results, aggregatedMetadata, error, isLoading, appendResults, setError, clearResults } = useResultsStore();
   const { resetAll: resetQueryBuilder } = useQueryBuilderStore();
-  const addHistoryEntry = useSearchHistoryStore((state) => state.addEntry);
+  const { addEntry: addHistoryEntry } = useConvexSearchHistory();
+  
+  // Get composed query including custom presets from Convex
+  const composedQuery = useBuildQueryWithPresets();
 
   const handleSearchComplete = (response: RawSearchResponse) => {
-    // Get the composed query string for aggregation tracking
+    // Get the query state for history capture
     const queryState = useQueryBuilderStore.getState();
-    const composedQuery = queryState.buildQuery();
 
     // Append results with deduplication (aggregates across multiple queries)
     appendResults(response.results, response.metadata, composedQuery);

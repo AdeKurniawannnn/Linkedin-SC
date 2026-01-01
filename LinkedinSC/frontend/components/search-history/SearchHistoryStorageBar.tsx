@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchHistoryStore } from "@/stores/searchHistoryStore";
+import { useConvexSearchHistory } from "@/hooks";
 import { formatBytes, getStorageStatusColor } from "@/lib/utils/storageUtils";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Visual indicator of storage usage for search history.
  */
 export function SearchHistoryStorageBar() {
-  const getStorageInfo = useSearchHistoryStore((state) => state.getStorageInfo);
+  const { getStorageInfo } = useConvexSearchHistory();
   const { used, max, percentage } = getStorageInfo();
 
   const color = getStorageStatusColor(percentage);

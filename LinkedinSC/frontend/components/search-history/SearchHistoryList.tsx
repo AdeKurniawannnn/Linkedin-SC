@@ -4,13 +4,14 @@ import { useState } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { SearchHistoryEntry } from "./SearchHistoryEntry";
-import type { SearchHistoryEntry as SearchHistoryEntryType } from "@/stores/searchHistoryStore";
+import type { ConvexSearchHistoryEntry } from "@/lib/convex-types";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface SearchHistoryListProps {
-  entries: SearchHistoryEntryType[];
-  onRerun: (id: string) => void;
-  onExport: (id: string) => void;
-  onDelete: (id: string) => void;
+  entries: ConvexSearchHistoryEntry[];
+  onRerun: (id: Id<"searchHistory">) => void;
+  onExport: (id: Id<"searchHistory">) => void;
+  onDelete: (id: Id<"searchHistory">) => void;
 }
 
 /**
@@ -56,7 +57,7 @@ export function SearchHistoryList({
         ) : (
           filteredEntries.map((entry) => (
             <SearchHistoryEntry
-              key={entry.id}
+              key={entry._id}
               entry={entry}
               onRerun={onRerun}
               onExport={onExport}

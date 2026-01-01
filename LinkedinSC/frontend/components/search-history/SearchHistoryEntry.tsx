@@ -15,13 +15,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
-import type { SearchHistoryEntry as SearchHistoryEntryType } from "@/stores/searchHistoryStore";
+import type { ConvexSearchHistoryEntry } from "@/lib/convex-types";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface SearchHistoryEntryProps {
-  entry: SearchHistoryEntryType;
-  onRerun: (id: string) => void;
-  onExport: (id: string) => void;
-  onDelete: (id: string) => void;
+  entry: ConvexSearchHistoryEntry;
+  onRerun: (id: Id<"searchHistory">) => void;
+  onExport: (id: Id<"searchHistory">) => void;
+  onDelete: (id: Id<"searchHistory">) => void;
 }
 
 /**
@@ -66,7 +67,7 @@ export function SearchHistoryEntry({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onRerun(entry.id)}
+            onClick={() => onRerun(entry._id)}
             className="h-7 w-7 p-0"
             title="Load query to search form"
           >
@@ -75,7 +76,7 @@ export function SearchHistoryEntry({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onExport(entry.id)}
+            onClick={() => onExport(entry._id)}
             className="h-7 w-7 p-0"
             title="Export to CSV"
             disabled={entry.compressed}
@@ -103,7 +104,7 @@ export function SearchHistoryEntry({
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => onDelete(entry.id)}
+                  onClick={() => onDelete(entry._id)}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Delete

@@ -35,6 +35,7 @@ const searchQueryValidator = v.object({
 const searchMetadataValidator = v.object({
   country: v.string(),
   language: v.string(),
+  max_results: v.number(),
   pages_fetched: v.number(),
   time_taken_seconds: v.number(),
 });
