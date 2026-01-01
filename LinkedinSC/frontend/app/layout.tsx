@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Raleway, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
 import "./globals.css";
 
 const raleway = Raleway({
@@ -29,7 +30,9 @@ export default function RootLayout({
       <body
         className={`${raleway.variable} ${jetbrainsMono.variable} antialiased font-sans`}
       >
-        {children}
+        <ConvexClientProvider>
+          {children}
+        </ConvexClientProvider>
         <Toaster
           position="bottom-right"
           richColors
