@@ -86,8 +86,8 @@ export function LocationSelector() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-900">Locations</span>
+          <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Locations</span>
         </div>
         {selectedLocations.length > 0 && (
           <Button

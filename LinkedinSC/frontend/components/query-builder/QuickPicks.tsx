@@ -32,8 +32,8 @@ export function QuickPicks() {
     <div className="space-y-2">
       {/* Section Header */}
       <div>
-        <h4 className="text-sm font-medium text-gray-900">Quick Picks</h4>
-        <p className="text-xs text-gray-500">
+        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Quick Picks</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           Common presets for quick access
         </p>
       </div>

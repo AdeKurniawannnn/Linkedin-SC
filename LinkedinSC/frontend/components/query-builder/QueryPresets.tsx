@@ -125,7 +125,7 @@ export function QueryPresets() {
 
         {/* Location Selector - Show only when not searching */}
         {!searchQuery.trim() && (
-          <div className="border rounded-lg p-4 bg-gray-50/50">
+          <div className="border rounded-lg p-4">
             <LocationSelector />
           </div>
         )}
@@ -154,7 +154,7 @@ export function QueryPresets() {
               <AccordionItem key={category} value={category} className="border rounded-lg px-4">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {categoryConfig.label}
                     </span>
                     {activeCount > 0 && (
@@ -207,7 +207,7 @@ export function QueryPresets() {
           <AccordionItem value="my_presets" className="border rounded-lg px-4">
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   My Presets
                 </span>
                 {customPresets.length > 0 && (
