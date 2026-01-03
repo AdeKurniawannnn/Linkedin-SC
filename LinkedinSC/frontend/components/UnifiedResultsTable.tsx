@@ -6,9 +6,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DownloadSimple, Buildings, ArrowsOut, X } from "@phosphor-icons/react";
+import { DownloadSimple, Buildings, ArrowsOut, X, ClockCounterClockwise } from "@phosphor-icons/react";
+import { formatDistanceToNow } from "date-fns";
 import type { AggregatedResult, AggregatedMetadata } from "@/lib/api";
 import { ResultRow } from "@/components/ResultRow";
+import { useResultsStore } from "@/stores/resultsStore";
+
+/**
+ * HistoryTimestampBadge Component
+ *
+ * Displays a timestamp badge showing when results were loaded from history.
+ * Returns null when no timestamp is provided.
+ */
+interface HistoryTimestampBadgeProps {
+  timestamp: number | null;
+}
+
+function HistoryTimestampBadge({ timestamp }: HistoryTimestampBadgeProps) {
+  if (!timestamp) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 mr-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-medium">
+      <ClockCounterClockwise className="h-3 w-3" weight="bold" />
+      Results from {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
+    </span>
+  );
+}
 
 /**
  * UnifiedResultsTable Component
@@ -38,6 +61,7 @@ export function UnifiedResultsTable({
 }: UnifiedResultsTableProps) {
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const historyTimestamp = useResultsStore((state) => state.historyTimestamp);
 
   // Toggle single row selection
   const handleToggle = (url: string) => {
@@ -132,7 +156,7 @@ export function UnifiedResultsTable({
   // Empty state
   if (results.length === 0) {
     return (
-      <Card className="w-full max-w-7xl mx-auto mt-8">
+      <Card className="w-full">
         <CardContent className="py-12 text-center">
           <div className="text-gray-400 mb-4">
             <svg
@@ -161,11 +185,12 @@ export function UnifiedResultsTable({
   }
 
   return (
-    <Card className="w-full max-w-7xl mx-auto mt-8">
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-2xl">Search Results</CardTitle>
           <CardDescription>
+            <HistoryTimestampBadge timestamp={historyTimestamp} />
             Found {metadata?.totalUniqueResults ?? results.length} unique results
             {metadata && metadata.queryCount > 1 && (
               <span className="text-purple-600 font-medium">
@@ -273,6 +298,7 @@ export function UnifiedResultsTable({
                 <div>
                   <DialogTitle className="text-2xl">Search Results</DialogTitle>
                   <DialogDescription>
+                    <HistoryTimestampBadge timestamp={historyTimestamp} />
                     Found {metadata?.totalUniqueResults ?? results.length} unique results
                     {metadata && metadata.queryCount > 1 && (
                       <span className="text-purple-600 font-medium">

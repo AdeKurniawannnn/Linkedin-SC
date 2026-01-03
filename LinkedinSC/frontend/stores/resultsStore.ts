@@ -15,6 +15,8 @@ interface ResultsState {
   aggregatedMetadata: AggregatedMetadata | null;
   error: string | null;
   isLoading: boolean;
+  /** Timestamp of the original search when loaded from history (null for fresh searches) */
+  historyTimestamp: number | null;
 }
 
 // Store actions interface
@@ -23,6 +25,8 @@ interface ResultsActions {
   appendResults: (results: UnifiedResult[], metadata: RawSearchResponse['metadata'], query: string) => void;
   /** Legacy: Replace all results (for backward compatibility) */
   setResults: (results: UnifiedResult[], metadata: RawSearchResponse['metadata'], query: string) => void;
+  /** Load results from history (sets historyTimestamp) */
+  loadFromHistory: (results: UnifiedResult[], metadata: RawSearchResponse['metadata'], query: string, timestamp: number) => void;
   setError: (error: string) => void;
   setLoading: (isLoading: boolean) => void;
   clearResults: () => void;
@@ -37,6 +41,7 @@ const initialState: ResultsState = {
   aggregatedMetadata: null,
   error: null,
   isLoading: false,
+  historyTimestamp: null,
 };
 
 /**
@@ -125,7 +130,7 @@ export const useResultsStore = create<ResultsStore>()(
       // Initial state
       ...initialState,
 
-      // Append results with deduplication
+      // Append results with deduplication (clears historyTimestamp for fresh searches)
       appendResults: (results, metadata, query) => {
         const state = get();
         const existingResults = state.results || [];
@@ -144,6 +149,7 @@ export const useResultsStore = create<ResultsStore>()(
           aggregatedMetadata: newMetadata,
           error: null,
           isLoading: false,
+          historyTimestamp: null, // Fresh search clears history indicator
         });
       },
 
@@ -163,6 +169,27 @@ export const useResultsStore = create<ResultsStore>()(
           },
           error: null,
           isLoading: false,
+          historyTimestamp: null,
+        });
+      },
+
+      // Load results from history (sets historyTimestamp for "Results from X ago" indicator)
+      loadFromHistory: (results, metadata, query, timestamp) => {
+        const aggregated = toAggregatedResults(results, query);
+
+        set({
+          results: aggregated,
+          aggregatedMetadata: {
+            totalUniqueResults: aggregated.length,
+            totalRawResults: results.length,
+            queryCount: 1,
+            queries: [query],
+            totalTimeSeconds: metadata.time_taken_seconds,
+            totalPagesFetched: metadata.pages_fetched,
+          },
+          error: null,
+          isLoading: false,
+          historyTimestamp: timestamp,
         });
       },
 
@@ -186,6 +213,7 @@ export const useResultsStore = create<ResultsStore>()(
         results: state.results,
         aggregatedMetadata: state.aggregatedMetadata,
         error: state.error,
+        historyTimestamp: state.historyTimestamp,
       }),
     }
   )

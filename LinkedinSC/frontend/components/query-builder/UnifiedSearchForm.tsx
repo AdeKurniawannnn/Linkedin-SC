@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import { useBuildQueryWithPresets } from "@/hooks";
 import { searchRaw, isAbortError, type RawSearchResponse } from "@/lib/api";
@@ -24,6 +25,7 @@ import {
   DEFAULT_MAX_RESULTS,
   MIN_RESULTS,
   MAX_RESULTS,
+  MAX_RESULTS_PRESETS,
 } from "@/config/searchOptions";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { toast } from "sonner";
@@ -278,6 +280,28 @@ export function UnifiedSearchForm({
         {/* Max Results Input */}
         <div className="space-y-2">
           <Label htmlFor="maxResults">Max Results</Label>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={MAX_RESULTS_PRESETS.includes(maxResults as typeof MAX_RESULTS_PRESETS[number]) ? String(maxResults) : undefined}
+            onValueChange={(value) => {
+              if (value) {
+                setMaxResults(Number(value));
+              }
+            }}
+            className="flex flex-wrap gap-1"
+          >
+            {MAX_RESULTS_PRESETS.map((preset) => (
+              <ToggleGroupItem
+                key={preset}
+                value={String(preset)}
+                className="text-xs px-3"
+              >
+                {preset === MAX_RESULTS ? "Max" : preset}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
           <Input
             id="maxResults"
             type="number"

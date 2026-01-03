@@ -4,7 +4,9 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
+import { useResultsStore } from "@/stores/resultsStore";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 import { calculateEntrySize } from "@/lib/utils/storageUtils";
 import type { UnifiedResult, RawSearchResponse } from "@/lib/api";
 
@@ -25,26 +27,35 @@ export interface SearchHistoryQuery {
 export function useConvexSearchHistory() {
   // Queries
   const entries = useQuery(api.searchHistory.list, { limit: 50 });
+  const starredEntries = useQuery(api.searchHistory.listStarred, { limit: 50 });
   const storageStats = useQuery(api.searchHistory.getStorageStats);
 
   // Mutations
   const addMutation = useMutation(api.searchHistory.add);
   const removeMutation = useMutation(api.searchHistory.remove);
+  const removeManyMutation = useMutation(api.searchHistory.removeMany);
   const clearAllMutation = useMutation(api.searchHistory.clearAll);
   const compressMutation = useMutation(api.searchHistory.compressOldEntries);
   const pruneMutation = useMutation(api.searchHistory.pruneOldest);
+  const toggleStarMutation = useMutation(api.searchHistory.toggleStar);
 
   // Add entry
   const addEntry = async (query: SearchHistoryQuery, response: RawSearchResponse) => {
+    // Extend metadata with max_results from query (required by Convex schema)
+    const metadata = {
+      ...response.metadata,
+      max_results: query.maxResults,
+    };
+
     const entry = {
       query,
       results: response.results,
-      metadata: response.metadata,
+      metadata,
       totalResults: response.total_results,
       sizeBytes: calculateEntrySize({
         query,
         results: response.results,
-        metadata: response.metadata,
+        metadata,
         totalResults: response.total_results,
       }),
     };
@@ -227,9 +238,132 @@ export function useConvexSearchHistory() {
     });
   };
 
+  /**
+   * Helper function to extract and format entry data for store loading.
+   *
+   * Encapsulates the data extraction logic to reduce coupling between this hook
+   * and the store implementations. Returns structured data that can be passed
+   * to store actions.
+   *
+   * Note: This hook still uses direct store access via getState() and setState()
+   * because it needs to:
+   * 1. Load results imperatively without triggering component re-renders
+   * 2. Restore full query builder state from historical data
+   * 3. Coordinate state updates across multiple stores atomically
+   *
+   * This is an acceptable use of direct store access in a hook that acts as
+   * a "controller" coordinating multiple stores for a specific feature (search history).
+   *
+   * @param entry - The search history entry from Convex
+   * @returns Formatted data ready to be passed to store actions
+   */
+  const getHistoryEntryData = (entry: NonNullable<ReturnType<typeof getEntryById>>) => {
+    // Convert stored results to expected format
+    const metadata = {
+      country: entry.metadata.country,
+      language: entry.metadata.language,
+      pages_fetched: entry.metadata.pages_fetched,
+      time_taken_seconds: entry.metadata.time_taken_seconds,
+    };
+
+    // Extract query builder state
+    const queryBuilderState = {
+      baseQuery: entry.query.baseQuery,
+      activePresetIds: entry.query.activePresetIds,
+      activeLocationIds: entry.query.activeLocationIds,
+      country: entry.query.country,
+      language: entry.query.language,
+      maxResults: entry.query.maxResults,
+    };
+
+    return {
+      results: entry.results as UnifiedResult[],
+      metadata,
+      composedQuery: entry.query.composedQuery,
+      timestamp: entry.timestamp,
+      queryBuilderState,
+    };
+  };
+
+  /**
+   * Load cached results from history (without re-running the search).
+   *
+   * Directly accesses Zustand stores using getState() and setState() to imperatively
+   * load historical search data. This approach is necessary because:
+   * - We need to coordinate updates across ResultsStore and QueryBuilderStore atomically
+   * - The operation is user-triggered (not reactive) and shouldn't cause unnecessary re-renders
+   * - We're restoring a complete state snapshot from history, not reacting to state changes
+   */
+  const loadResultsFromHistory = (id: Id<"searchHistory">) => {
+    const entry = getEntryById(id);
+    if (!entry) {
+      toast.error("History entry not found");
+      return;
+    }
+
+    // Check if results are compressed
+    if (entry.compressed || entry.results.length === 0) {
+      toast.warning("Results were compressed", {
+        description: "Re-run the search for full data",
+      });
+      // Still restore query so user can re-run
+      loadQueryToBuilder(id);
+      return;
+    }
+
+    // Extract formatted data using helper function
+    const { results, metadata, composedQuery, timestamp, queryBuilderState } =
+      getHistoryEntryData(entry);
+
+    // Load into results store
+    useResultsStore.getState().loadFromHistory(
+      results,
+      metadata,
+      composedQuery,
+      timestamp
+    );
+
+    // Restore query builder state
+    useQueryBuilderStore.setState(queryBuilderState);
+
+    toast.success("Loaded search from history", {
+      description: formatDistanceToNow(new Date(timestamp), { addSuffix: true }),
+    });
+  };
+
+  // Toggle star status
+  const toggleStar = async (id: Id<"searchHistory">) => {
+    try {
+      const result = await toggleStarMutation({ id });
+      toast.success(result.starred ? "Starred" : "Unstarred");
+    } catch (error) {
+      console.error("Failed to toggle star:", error);
+      toast.error("Failed to update star status");
+    }
+  };
+
+  // Get starred entries
+  const getStarredEntries = () => {
+    return starredEntries ?? [];
+  };
+
+  // Delete multiple entries
+  const deleteMany = async (ids: Id<"searchHistory">[]) => {
+    try {
+      const result = await removeManyMutation({ ids });
+      toast.success(`Deleted ${result.deleted} entries`);
+      return result.deleted;
+    } catch (error) {
+      console.error("Failed to delete entries:", error);
+      toast.error("Failed to delete entries");
+      return 0;
+    }
+  };
+
   return {
     // State
     entries: entries ?? [],
+    starredEntries: starredEntries ?? [],
     isLoading: entries === undefined,
     totalSizeBytes: storageStats?.used ?? 0,
     maxSizeBytes: storageStats?.max ?? 4 * 1024 * 1024,
@@ -237,14 +371,18 @@ export function useConvexSearchHistory() {
     // Actions
     addEntry,
     deleteEntry,
+    deleteMany,
     clearHistory,
     getEntryById,
     getRecentEntries,
+    getStarredEntries,
     searchHistory,
     getStorageInfo,
     pruneOldEntries,
     exportToCSV,
     downloadCSV,
     loadQueryToBuilder,
+    loadResultsFromHistory,
+    toggleStar,
   };
 }

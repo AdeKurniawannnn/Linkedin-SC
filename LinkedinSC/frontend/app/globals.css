@@ -49,6 +49,7 @@
 
 /* Caffeine Theme - Light Mode */
 :root {
+  --header-height: 64px;
   --radius: 0.5rem;
   --background: oklch(0.9821 0 0);
   --foreground: oklch(0.2435 0 0);

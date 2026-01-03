@@ -61,7 +61,10 @@ export const DEFAULT_MAX_RESULTS = 50;
 
 // Limits
 export const MIN_RESULTS = 1;
-export const MAX_RESULTS = 200;
+export const MAX_RESULTS = 100;
+
+// Quick preset options for max results
+export const MAX_RESULTS_PRESETS = [10, 25, 50, 100] as const;
 
 // API timeouts (in milliseconds)
 export const API_TIMEOUT_MS = 180000; // 3 minutes

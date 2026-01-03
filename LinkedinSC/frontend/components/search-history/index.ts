@@ -1,10 +1,16 @@
 /**
  * Search History Components
  *
- * Exports all search history related components for easy importing.
+ * Redesigned search history with tabs, starred entries, and bulk actions.
  */
 
-export { SearchHistoryPanel } from "./SearchHistoryPanel";
-export { SearchHistoryList } from "./SearchHistoryList";
-export { SearchHistoryEntry } from "./SearchHistoryEntry";
-export { SearchHistoryStorageBar } from "./SearchHistoryStorageBar";
+// Main component
+export { SearchHistorySection } from "./SearchHistorySection";
+
+// Sub-components
+export { SearchHistoryTabs } from "./SearchHistoryTabs";
+export { HistoryEntryCard } from "./HistoryEntryCard";
+export { HistoryEmptyState } from "./HistoryEmptyState";
+export { HistorySearchFilter } from "./HistorySearchFilter";
+export { HistoryBulkActions } from "./HistoryBulkActions";
+export { StoragePopover } from "./StoragePopover";

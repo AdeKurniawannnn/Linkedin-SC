@@ -22,6 +22,8 @@ import { toast } from "sonner";
 interface SaveSearchDialogProps {
   trigger?: React.ReactNode;
   disabled?: boolean;
+  /** Render a smaller button for compact layouts */
+  compact?: boolean;
 }
 
 /**
@@ -30,7 +32,7 @@ interface SaveSearchDialogProps {
  * Dialog for saving the current query configuration.
  * Captures name, description, and optional tags.
  */
-export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
+export function SaveSearchDialog({ trigger, disabled, compact }: SaveSearchDialogProps) {
   const [open, setOpen] = useState(false);
   const { addSearch } = useConvexSavedSearches();
 
@@ -101,7 +103,11 @@ export function SaveSearchDialog({ trigger, disabled }: SaveSearchDialogProps) {
     setOpen(false);
   };
 
-  const defaultTrigger = (
+  const defaultTrigger = compact ? (
+    <Button variant="ghost" size="icon" className="h-8 w-8" title="Save search" disabled={disabled}>
+      <Bookmark className="h-4 w-4" />
+    </Button>
+  ) : (
     <Button variant="outline" size="icon" className="h-14 w-14" title="Save search" disabled={disabled}>
       <Bookmark className="h-5 w-5" />
     </Button>

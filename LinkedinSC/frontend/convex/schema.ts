@@ -72,9 +72,12 @@ export default defineSchema({
     // Storage management
     sizeBytes: v.number(),
     compressed: v.optional(v.boolean()),
+    // User preference
+    starred: v.optional(v.boolean()),
   })
     .index("by_timestamp", ["timestamp"])
-    .index("by_user", ["userId", "timestamp"]),
+    .index("by_user", ["userId", "timestamp"])
+    .index("by_starred", ["starred", "timestamp"]),
 
   // Saved Searches - user-named search configurations
   savedSearches: defineTable({

@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect, useDeferredValue, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useBuildQueryWithPresets } from "@/hooks";
 import { Copy, ArrowSquareOut, Check, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -11,6 +17,7 @@ import {
   GOOGLE_MAX_QUERY_LENGTH,
   GOOGLE_QUERY_WARNING_THRESHOLD,
 } from "@/config/searchOptions";
+import { cn } from "@/lib/utils";
 
 // Calculate warning threshold
 const WARNING_THRESHOLD = Math.floor(GOOGLE_MAX_QUERY_LENGTH * GOOGLE_QUERY_WARNING_THRESHOLD);
@@ -175,5 +182,152 @@ export function QueryPreview() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * QueryPreviewCompact Component
+ *
+ * A compact horizontal version of QueryPreview for use in the header bar.
+ * Shows truncated query text with character count badge and action buttons.
+ * Warnings are displayed as tooltips instead of inline blocks.
+ */
+export function QueryPreviewCompact() {
+  const [copied, setCopied] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const rawQuery = useBuildQueryWithPresets();
+  const composedQuery = useDeferredValue(rawQuery);
+
+  const { queryLength, isOverLimit, isNearLimit } = useMemo(() => {
+    const length = composedQuery.length;
+    return {
+      queryLength: length,
+      isOverLimit: length > GOOGLE_MAX_QUERY_LENGTH,
+      isNearLimit: length >= WARNING_THRESHOLD && length <= GOOGLE_MAX_QUERY_LENGTH,
+    };
+  }, [composedQuery]);
+
+  const handleCopy = useCallback(async () => {
+    if (!composedQuery) return;
+    try {
+      await navigator.clipboard.writeText(composedQuery);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Query copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      toast.error("Failed to copy query");
+    }
+  }, [composedQuery]);
+
+  const handleOpenInGoogle = useCallback(() => {
+    if (!composedQuery) return;
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(composedQuery)}`;
+    window.open(googleUrl, "_blank", "noopener,noreferrer");
+  }, [composedQuery]);
+
+  // Warning tooltip content
+  const warningMessage = isOverLimit
+    ? `Query is ${queryLength - GOOGLE_MAX_QUERY_LENGTH} characters over the ${GOOGLE_MAX_QUERY_LENGTH} character limit`
+    : isNearLimit
+    ? `${GOOGLE_MAX_QUERY_LENGTH - queryLength} characters remaining`
+    : null;
+
+  if (!isMounted) {
+    return (
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        {/* Query text placeholder */}
+        <div className="flex-1 h-8 bg-muted rounded-md animate-pulse" />
+
+        {/* Character count badge placeholder */}
+        <div className="h-7 w-16 bg-muted rounded animate-pulse" />
+
+        {/* Action buttons placeholders */}
+        <div className="flex items-center gap-1">
+          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        {/* Query text with truncation */}
+        <div
+          className={cn(
+            "flex-1 min-w-0 px-3 py-1.5 rounded-md border bg-muted/50 font-mono text-sm truncate",
+            isOverLimit && "border-red-500 dark:border-red-600",
+            isNearLimit && !isOverLimit && "border-yellow-500 dark:border-yellow-600"
+          )}
+        >
+          {composedQuery || (
+            <span className="text-muted-foreground italic">No query built yet</span>
+          )}
+        </div>
+
+        {/* Character count badge with warning tooltip */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap",
+                isOverLimit
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  : isNearLimit
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {(isOverLimit || isNearLimit) && (
+                <Warning className="h-3 w-3" weight="bold" />
+              )}
+              {queryLength}/{GOOGLE_MAX_QUERY_LENGTH}
+            </div>
+          </TooltipTrigger>
+          {warningMessage && (
+            <TooltipContent>
+              <p>{warningMessage}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1">
+          <SaveSearchDialog disabled={!composedQuery} compact />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopy}
+            disabled={!composedQuery}
+            title={copied ? "Copied!" : "Copy to clipboard"}
+            className="h-8 w-8"
+          >
+            {copied ? (
+              <Check className="h-4 w-4" weight="bold" />
+            ) : (
+              <Copy className="h-4 w-4" weight="bold" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenInGoogle}
+            disabled={!composedQuery}
+            title="Open in Google"
+            className="h-8 w-8"
+          >
+            <ArrowSquareOut className="h-4 w-4" weight="bold" />
+          </Button>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
