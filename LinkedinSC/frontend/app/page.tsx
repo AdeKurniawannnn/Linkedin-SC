@@ -8,6 +8,7 @@ import { PresetCommandPalette } from "@/components/query-builder/PresetCommandPa
 import { UnifiedResultsTable } from "@/components/UnifiedResultsTable";
 import { ProgressBar } from "@/components/ProgressBar";
 import { StatusIndicator } from "@/components/StatusIndicator";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SearchHistoryPanel } from "@/components/search-history";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export default function Home() {
             <TrashSimple className="h-4 w-4 mr-1" />
             Clear
           </Button>
+          <ThemeToggle />
           <StatusIndicator />
         </div>
         <h1 className="text-4xl font-bold text-foreground mb-2">

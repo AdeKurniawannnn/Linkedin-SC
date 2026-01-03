@@ -43,13 +43,13 @@ export function StatusIndicator() {
   const config = statusConfig[status];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 backdrop-blur-sm rounded-full border border-border shadow-sm">
       <span
         className={`h-2 w-2 rounded-full ${config.color} ${
           config.pulse ? "animate-pulse" : ""
         }`}
       />
-      <span className="text-xs font-medium text-gray-600">{config.text}</span>
+      <span className="text-xs font-medium text-muted-foreground">{config.text}</span>
     </div>
   );
 }
