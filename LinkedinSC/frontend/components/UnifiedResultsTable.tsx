@@ -173,10 +173,10 @@ export function UnifiedResultsTable({
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
             No results found
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Try adjusting your search criteria or using different keywords.
           </p>
         </CardContent>
