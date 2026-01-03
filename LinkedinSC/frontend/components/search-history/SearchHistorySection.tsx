@@ -68,7 +68,7 @@ export function SearchHistorySection({
             <CaretDown
               className={cn(
                 "h-4 w-4 transition-transform duration-200",
-                isOpen && "rotate-180"
+                !isOpen && "rotate-180"
               )}
               weight="bold"
             />
@@ -77,7 +77,7 @@ export function SearchHistorySection({
         <StoragePopover />
       </div>
 
-      <CollapsibleContent className="pt-3">
+      <CollapsibleContent className="pt-3 flex-1 min-h-0 flex flex-col">
         <SearchHistoryTabs />
       </CollapsibleContent>
     </Collapsible>

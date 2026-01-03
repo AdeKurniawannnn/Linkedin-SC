@@ -88,7 +88,7 @@ export default function Home() {
   const rightPanelContent = (
     <div className="space-y-6 h-full flex flex-col">
       {/* Results Section */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Progress Bar */}
         <ProgressBar isLoading={isLoading} />
 
