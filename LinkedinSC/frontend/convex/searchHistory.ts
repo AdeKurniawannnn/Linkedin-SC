@@ -104,6 +104,23 @@ export const getStorageStats = query({
   },
 });
 
+/**
+ * Get starred search history entries
+ */
+export const listStarred = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    return await ctx.db
+      .query("searchHistory")
+      .withIndex("by_starred", (q) => q.eq("starred", true))
+      .order("desc")
+      .take(limit);
+  },
+});
+
 // ============ MUTATIONS ============
 
 /**
@@ -147,9 +164,7 @@ export const remove = mutation({
 export const clearAll = mutation({
   handler: async (ctx) => {
     const entries = await ctx.db.query("searchHistory").collect();
-    for (const entry of entries) {
-      await ctx.db.delete(entry._id);
-    }
+    await Promise.all(entries.map((entry) => ctx.db.delete(entry._id)));
     return { deleted: entries.length };
   },
 });
@@ -169,21 +184,26 @@ export const compressOldEntries = mutation({
       .filter((q) => q.lt(q.field("timestamp"), cutoff))
       .collect();
 
-    let compressedCount = 0;
-    for (const entry of entries) {
-      if (!entry.compressed && entry.results.length > 0) {
+    const entriesToCompress = entries.filter(
+      (entry) => !entry.compressed && entry.results.length > 0
+    );
+
+    await Promise.all(
+      entriesToCompress.map((entry) => {
         // Calculate new size (rough estimate without results)
-        const newSizeBytes = Math.max(100, entry.sizeBytes - entry.results.length * 200);
-        await ctx.db.patch(entry._id, {
+        const newSizeBytes = Math.max(
+          100,
+          entry.sizeBytes - entry.results.length * 200
+        );
+        return ctx.db.patch(entry._id, {
           results: [],
           compressed: true,
           sizeBytes: newSizeBytes,
         });
-        compressedCount++;
-      }
-    }
+      })
+    );
 
-    return { compressed: compressedCount };
+    return { compressed: entriesToCompress.length };
   },
 });
 
@@ -214,5 +234,32 @@ export const pruneOldest = mutation({
     }
 
     return { removed: removedCount, newTotalSize: totalSize };
+  },
+});
+
+/**
+ * Toggle starred status of a search history entry
+ */
+export const toggleStar = mutation({
+  args: { id: v.id("searchHistory") },
+  handler: async (ctx, args) => {
+    const entry = await ctx.db.get(args.id);
+    if (!entry) {
+      throw new Error("Entry not found");
+    }
+    const newStarred = !entry.starred;
+    await ctx.db.patch(args.id, { starred: newStarred });
+    return { starred: newStarred };
+  },
+});
+
+/**
+ * Delete multiple search history entries
+ */
+export const removeMany = mutation({
+  args: { ids: v.array(v.id("searchHistory")) },
+  handler: async (ctx, args) => {
+    await Promise.all(args.ids.map((id) => ctx.db.delete(id)));
+    return { deleted: args.ids.length };
   },
 });

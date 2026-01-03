@@ -20,6 +20,7 @@ export interface ConvexSearchHistoryQuery {
 export interface ConvexSearchMetadata {
   country: string;
   language: string;
+  max_results: number;
   pages_fetched: number;
   time_taken_seconds: number;
 }
@@ -30,10 +31,10 @@ export interface ConvexUnifiedResult {
   description: string;
   type: "profile" | "company" | "post" | "job" | "other";
   rank: number;
-  author_name?: string;
-  company_name?: string;
-  followers?: number;
-  location?: string;
+  author_name?: string | null;
+  company_name?: string | null;
+  followers?: number | null;
+  location?: string | null;
 }
 
 export interface ConvexSearchHistoryEntry {
@@ -47,6 +48,7 @@ export interface ConvexSearchHistoryEntry {
   totalResults: number;
   sizeBytes: number;
   compressed?: boolean;
+  starred?: boolean;
 }
 
 // ============ Saved Searches ============

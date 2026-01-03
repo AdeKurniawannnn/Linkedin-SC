@@ -1,22 +1,23 @@
 "use client";
 
 import { QueryPresets } from "@/components/query-builder/QueryPresets";
-import { QueryPreview } from "@/components/query-builder/QueryPreview";
 import { UnifiedSearchForm } from "@/components/query-builder/UnifiedSearchForm";
 import { SavedSearchesList } from "@/components/query-builder/SavedSearchesList";
 import { PresetCommandPalette } from "@/components/query-builder/PresetCommandPalette";
 import { UnifiedResultsTable } from "@/components/UnifiedResultsTable";
 import { ProgressBar } from "@/components/ProgressBar";
-import { StatusIndicator } from "@/components/StatusIndicator";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { SearchHistoryPanel } from "@/components/search-history";
-import { Button } from "@/components/ui/button";
+import { SearchHistorySection } from "@/components/search-history";
+import {
+  HeaderBar,
+  SplitPanelLayout,
+  MobileTabs,
+  EmptyState,
+} from "@/components/layout";
 import { useResultsStore } from "@/stores/resultsStore";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 import { useConvexSearchHistory, useBuildQueryWithPresets } from "@/hooks";
 import { type RawSearchResponse } from "@/lib/api";
-import { TrashSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -24,7 +25,7 @@ export default function Home() {
   const { results, aggregatedMetadata, error, isLoading, appendResults, setError, clearResults } = useResultsStore();
   const { resetAll: resetQueryBuilder } = useQueryBuilderStore();
   const { addEntry: addHistoryEntry } = useConvexSearchHistory();
-  
+
   // Get composed query including custom presets from Convex
   const composedQuery = useBuildQueryWithPresets();
 
@@ -66,80 +67,77 @@ export default function Home() {
     resetQueryBuilder();
   };
 
+  // Left panel content: Query building tools
+  const leftPanelContent = (
+    <div className="space-y-6">
+      {/* Search Form - Primary action */}
+      <UnifiedSearchForm
+        onSearchComplete={handleSearchComplete}
+        onSearchError={handleSearchError}
+      />
+
+      {/* Query Presets - Configuration before search */}
+      <QueryPresets />
+
+      {/* Saved Searches - Quick recall for returning users */}
+      <SavedSearchesList />
+    </div>
+  );
+
+  // Right panel content: Results and history
+  const rightPanelContent = (
+    <div className="space-y-6 h-full flex flex-col">
+      {/* Results Section */}
+      <div className="flex-1 min-h-0">
+        {/* Progress Bar */}
+        <ProgressBar isLoading={isLoading} />
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-4">
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Results Table or Empty State */}
+        {results ? (
+          <UnifiedResultsTable results={results} metadata={aggregatedMetadata ?? undefined} />
+        ) : (
+          !isLoading && !error && <EmptyState />
+        )}
+      </div>
+
+      {/* Search History - Collapsible, auto-collapses when results are shown */}
+      <SearchHistorySection autoCollapse={!!results} />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Global Command Palette - Ctrl+K / Cmd+K */}
       <PresetCommandPalette />
 
-      {/* Header */}
-      <header className="text-center mb-12 relative">
-        <div className="absolute top-0 right-4 flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearAll}
-            className="text-muted-foreground hover:text-destructive"
-            title="Clear all data"
-          >
-            <TrashSimple className="h-4 w-4 mr-1" />
-            Clear
-          </Button>
-          <ThemeToggle />
-          <StatusIndicator />
-        </div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">
-          LinkedIn Query Builder
-        </h1>
-        <p className="text-lg text-muted-foreground">
-          Build advanced search queries with toggles
-          <span className="ml-2 text-sm text-muted-foreground/70">
-            (Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">⌘K</kbd> for quick search)
-          </span>
-        </p>
-      </header>
-
       <ErrorBoundary sessionStorageKey="query-builder-session">
-        <div className="w-full max-w-7xl mx-auto space-y-6">
-          {/* Sticky Query Preview */}
-          <div className="sticky top-4 z-10">
-            <QueryPreview />
-          </div>
+        {/* Header Bar */}
+        <HeaderBar onClear={handleClearAll} />
 
-          {/* Saved Searches - Quick recall for returning users */}
-          <SavedSearchesList />
-
-          {/* Search History - Automatic capture of all searches */}
-          <SearchHistoryPanel />
-
-          {/* Query Presets - Configuration before search */}
-          <QueryPresets />
-
-          {/* Search Form - Primary action */}
-          <UnifiedSearchForm
-            onSearchComplete={handleSearchComplete}
-            onSearchError={handleSearchError}
+        {/* Desktop: Split Panel Layout (lg and up) */}
+        <div className="hidden lg:flex flex-1 min-h-0 w-full">
+          <SplitPanelLayout
+            leftPanel={leftPanelContent}
+            rightPanel={rightPanelContent}
           />
+        </div>
 
-          {/* Progress Bar */}
-          <ProgressBar isLoading={isLoading} />
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-              <p className="font-medium">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Results Table */}
-          {results && <UnifiedResultsTable results={results} metadata={aggregatedMetadata ?? undefined} />}
+        {/* Mobile: Tabbed Layout (below lg) */}
+        <div className="lg:hidden flex-1 min-h-0">
+          <MobileTabs
+            queryTab={leftPanelContent}
+            resultsTab={rightPanelContent}
+          />
         </div>
       </ErrorBoundary>
-
-      {/* Footer */}
-      <footer className="text-center mt-16 text-sm text-muted-foreground">
-        <p>Powered by Bright Data API • Built with Next.js & FastAPI</p>
-      </footer>
     </div>
   );
 }
