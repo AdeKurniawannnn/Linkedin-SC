@@ -6,17 +6,10 @@ import {
   DownloadSimple,
   Star,
   Trash,
-  DotsThree,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +42,7 @@ interface HistoryEntryCardProps {
  * Clean entry card with hover-reveal actions.
  * - Click card body: Load cached results from history
  * - Click rerun button: Confirmation dialog → restore query + trigger new search
- * Features selection checkbox, minimal metadata, and dropdown for less-common actions.
+ * Features selection checkbox, minimal metadata, and visible action buttons (rerun, star, export, delete).
  */
 export function HistoryEntryCard({
   entry,
@@ -62,6 +55,7 @@ export function HistoryEntryCard({
   onToggleStar,
 }: HistoryEntryCardProps) {
   const [showRerunDialog, setShowRerunDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const truncatedQuery =
     entry.query.composedQuery.length > 60
@@ -84,6 +78,11 @@ export function HistoryEntryCard({
   const handleRerunConfirm = () => {
     setShowRerunDialog(false);
     onRerun(entry._id);
+  };
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteDialog(false);
+    onDelete(entry._id);
   };
 
   return (
@@ -169,40 +168,33 @@ export function HistoryEntryCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            onClick={() => onToggleStar(entry._id)}
+            title={entry.starred ? "Unstar" : "Star"}
+          >
+            <Star
+              className={cn("h-4 w-4", entry.starred && "text-yellow-500")}
+              weight={entry.starred ? "fill" : "bold"}
+            />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => onExport(entry._id)}
             disabled={entry.compressed}
             title="Export to CSV"
           >
             <DownloadSimple className="h-4 w-4" weight="bold" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                title="More actions"
-              >
-                <DotsThree className="h-4 w-4" weight="bold" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onToggleStar(entry._id)}>
-                <Star
-                  className={cn("h-4 w-4 mr-2", entry.starred && "fill-current")}
-                  weight={entry.starred ? "fill" : "regular"}
-                />
-                {entry.starred ? "Unstar" : "Star"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => onDelete(entry._id)}
-              >
-                <Trash className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            title="Delete"
+          >
+            <Trash className="h-4 w-4" weight="bold" />
+          </Button>
         </div>
       </div>
 
@@ -228,6 +220,27 @@ export function HistoryEntryCard({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleRerunConfirm}>
               Re-run Search
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this search?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this search history entry. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

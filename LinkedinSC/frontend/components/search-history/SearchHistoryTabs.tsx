@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { ClockCounterClockwise, ListBullets, Star } from "@phosphor-icons/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { HistoryEntryCard } from "./HistoryEntryCard";
 import { HistoryEmptyState } from "./HistoryEmptyState";
 import { HistorySearchFilter } from "./HistorySearchFilter";
@@ -83,6 +84,25 @@ export function SearchHistoryTabs() {
     setSelectedIds(new Set());
   }, []);
 
+  const handleSelectAll = useCallback(
+    (selectAll: boolean) => {
+      if (selectAll) {
+        const allIds = new Set(displayedEntries.map((entry) => entry._id));
+        setSelectedIds(allIds);
+      } else {
+        setSelectedIds(new Set());
+      }
+    },
+    [displayedEntries]
+  );
+
+  // Compute select all state
+  const isAllSelected = displayedEntries.length > 0 && 
+    displayedEntries.every((entry) => selectedIds.has(entry._id));
+  const isIndeterminate = selectedIds.size > 0 && 
+    !isAllSelected && 
+    displayedEntries.some((entry) => selectedIds.has(entry._id));
+
   const handleExportSelected = useCallback(() => {
     const ids = Array.from(selectedIds);
     downloadCSV(ids);
@@ -147,6 +167,18 @@ export function SearchHistoryTabs() {
   return (
     <div className="relative">
       <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <div className="flex items-center gap-3 mb-2">
+          {displayedEntries.length > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Checkbox
+                checked={isIndeterminate ? "indeterminate" : isAllSelected}
+                onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                aria-label="Select all"
+              />
+              <span>Select all</span>
+            </label>
+          )}
+        </div>
         <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="recent" className="gap-1.5">
             <ClockCounterClockwise className="h-4 w-4" weight="duotone" />
@@ -166,7 +198,7 @@ export function SearchHistoryTabs() {
           {recentEntries.length === 0 ? (
             <HistoryEmptyState tab="recent" />
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-400px)] min-h-32 overflow-y-auto">
               {recentEntries.map((entry) => (
                 <HistoryEntryCard
                   key={entry._id}
@@ -191,7 +223,7 @@ export function SearchHistoryTabs() {
           {filteredEntries.length === 0 ? (
             <HistoryEmptyState tab="all" />
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-400px)] min-h-32 overflow-y-auto">
               {filteredEntries.map((entry) => (
                 <HistoryEntryCard
                   key={entry._id}
@@ -218,7 +250,7 @@ export function SearchHistoryTabs() {
           {starredEntries.length === 0 ? (
             <HistoryEmptyState tab="starred" />
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-400px)] min-h-32 overflow-y-auto">
               {starredEntries.map((entry) => (
                 <HistoryEntryCard
                   key={entry._id}
