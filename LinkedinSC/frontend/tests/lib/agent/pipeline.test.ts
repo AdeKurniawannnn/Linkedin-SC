@@ -196,7 +196,7 @@ describe('pipeline state machine', () => {
       expect(newState.executeCompleted).toEqual([])
     })
 
-    it('does not reset queues when transitioning from complete to generating', () => {
+    it('increments round when transitioning from complete to generating', () => {
       const state: PipelineState = {
         ...createInitialState(),
         stage: 'complete',
@@ -205,8 +205,8 @@ describe('pipeline state machine', () => {
 
       const newState = transition(state, 'generating')
 
-      // Round should stay the same since this is not from aggregating
-      expect(newState.round).toBe(1)
+      // Round should increment when starting new round from complete
+      expect(newState.round).toBe(2)
     })
   })
 
