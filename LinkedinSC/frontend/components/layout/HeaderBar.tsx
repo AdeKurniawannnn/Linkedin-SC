@@ -8,6 +8,7 @@ import { TrashSimple } from "@phosphor-icons/react";
 
 interface HeaderBarProps {
   onClear: () => void;
+  agentModeToggle?: React.ReactNode;
 }
 
 /**
@@ -17,9 +18,9 @@ interface HeaderBarProps {
  * Contains:
  * - Left: StatusIndicator (backend status)
  * - Center: QueryPreviewCompact (live query preview with actions)
- * - Right: ThemeToggle + Clear button
+ * - Right: AgentModeToggle (optional) + ThemeToggle + Clear button
  */
-export function HeaderBar({ onClear }: HeaderBarProps) {
+export function HeaderBar({ onClear, agentModeToggle }: HeaderBarProps) {
   return (
     <header
       className="h-16 px-4 flex items-center gap-4 border-b border-border bg-background"
@@ -31,8 +32,10 @@ export function HeaderBar({ onClear }: HeaderBarProps) {
       {/* Center: Query Preview (flex-grow) */}
       <QueryPreviewCompact />
 
-      {/* Right: Theme Toggle + Clear Button */}
-      <div className="flex items-center gap-2">
+      {/* Right: Agent Mode Toggle + Theme Toggle + Clear Button */}
+      <div className="flex items-center gap-3">
+        {agentModeToggle}
+        <div className="h-4 w-px bg-border" />
         <ThemeToggle />
         <Button
           variant="ghost"

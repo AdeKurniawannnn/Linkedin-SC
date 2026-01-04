@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as agentSessions from "../agentSessions.js";
 import type * as customPresets from "../customPresets.js";
+import type * as generatedQueries from "../generatedQueries.js";
 import type * as savedSearches from "../savedSearches.js";
 import type * as searchHistory from "../searchHistory.js";
 
@@ -19,7 +21,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentSessions: typeof agentSessions;
   customPresets: typeof customPresets;
+  generatedQueries: typeof generatedQueries;
   savedSearches: typeof savedSearches;
   searchHistory: typeof searchHistory;
 }>;
