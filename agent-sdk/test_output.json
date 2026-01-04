@@ -1,0 +1,93 @@
+{
+  "metadata": {
+    "original_input": "CEO Jakarta fintech",
+    "parsed_components": {
+      "locations": [
+        "Jakarta",
+        "DKI Jakarta",
+        "Jakarta Pusat",
+        "Jakarta Selatan"
+      ],
+      "seniority": [
+        "CEO",
+        "Chief Executive Officer",
+        "Founder",
+        "Co-founder",
+        "President Director",
+        "Direktur Utama"
+      ],
+      "industries": [
+        "fintech",
+        "financial technology",
+        "banking technology",
+        "payment",
+        "lending",
+        "digital banking"
+      ],
+      "technologies": []
+    },
+    "timestamp": "2026-01-04T20:40:24.650011",
+    "model_used": "glm-4.7"
+  },
+  "variants": [
+    {
+      "query": "site:linkedin.com/in (\"Jakarta\" OR \"DKI Jakarta\" OR \"Jakarta Pusat\" OR \"Jakarta Selatan\") (CEO OR \"Chief Executive Officer\" OR Founder OR \"Co-founder\" OR \"President Director\" OR \"Direktur Utama\") (fintech OR \"financial technology\" OR \"banking technology\" OR payment OR lending OR \"digital banking\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+      "strategy_type": "broad",
+      "expected_precision": "low",
+      "expected_volume": "high",
+      "explanation": "Uses comprehensive synonym expansion for both location (all Jakarta areas) and seniority (all CEO/Founder variants), plus broad fintech industry terms. Maximizes reach while maintaining relevance to Jakarta fintech executive search.",
+      "targeting_focus": [
+        "location",
+        "seniority",
+        "industry"
+      ]
+    },
+    {
+      "query": "site:linkedin.com/in Jakarta CEO fintech -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+      "strategy_type": "narrow",
+      "expected_precision": "high",
+      "expected_volume": "low",
+      "explanation": "Strict exact-match approach with minimal filters. Only profiles explicitly mentioning 'Jakarta', 'CEO', and 'fintech' will appear. Highest precision for direct matches but may miss relevant profiles with alternative phrasing.",
+      "targeting_focus": [
+        "exact-match",
+        "high-intent"
+      ]
+    },
+    {
+      "query": "site:linkedin.com/in (\"Jakarta\" OR \"DKI Jakarta\") (CEO OR \"Chief Executive Officer\" OR \"Direktur Utama\") (fintech OR \"financial technology\" OR payment OR \"digital banking\" OR lending OR \"banking technology\" OR \"payments industry\" OR \"financial inclusion\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+      "strategy_type": "industry_focused",
+      "expected_precision": "medium",
+      "expected_volume": "medium",
+      "explanation": "Deep vertical expansion in fintech sector including adjacent sub-sectors (payments, lending, banking technology). Targets decision-makers actively involved in Indonesia's financial technology ecosystem.",
+      "targeting_focus": [
+        "industry-vertical",
+        "sector-depth",
+        "decision-makers"
+      ]
+    },
+    {
+      "query": "site:linkedin.com/in (\"Jakarta\" OR \"DKI Jakarta\" OR \"Jakarta Selatan\") (CEO OR Founder OR \"Co-founder\" OR \"President Director\" OR \"Direktur Utama\" OR \"Managing Director\" OR \"Chief Executive\") (fintech OR \"financial technology\" OR startup OR \"tech startup\" OR \"financial services\" OR insurtech OR regtech) -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+      "strategy_type": "seniority_focused",
+      "expected_precision": "medium",
+      "expected_volume": "medium",
+      "explanation": "Prioritizes executive title variants and entrepreneurial roles. Expands beyond traditional CEOs to include founders and managing directors who may lead fintech companies. Includes adjacent tech startup ecosystem.",
+      "targeting_focus": [
+        "executive-level",
+        "founders",
+        "entrepreneurial"
+      ]
+    },
+    {
+      "query": "site:linkedin.com/in (\"Jakarta\" OR \"Jakarta Selatan\") (CEO OR \"Chief Executive Officer\" OR Founder OR \"Direktur Utama\") fintech (payment OR \"digital payment\" OR e-wallet OR \"digital lending\" OR \"digital banking\" OR \"bank digital\" OR \"financial inclusion\" OR \"tech finance\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+      "strategy_type": "technology_focused",
+      "expected_precision": "high",
+      "expected_volume": "low",
+      "explanation": "Targets specific fintech technology segments and platforms. Focuses on executives working in payment systems, digital banking, e-wallets, and lending technologies. High precision for technical leadership roles in fintech product/platform companies.",
+      "targeting_focus": [
+        "fintech-platforms",
+        "payment-systems",
+        "digital-banking"
+      ]
+    }
+  ]
+}
