@@ -1,166 +1,99 @@
 """Prompt templates for GLM Query Agent."""
 
-from typing import Optional
-
-QUERY_GENERATION_PROMPT = '''You are an expert LinkedIn lead generation query builder for global B2B markets.
+QUERY_GENERATION_PROMPT = '''You are an expert LinkedIn lead generation query builder specializing in Indonesian B2B markets.
 
 INPUT: "{input_text}"
-COUNT: {count}
-FOCUS: {focus}
 
-TASK: Generate {count} total LinkedIn search queries based on the COUNT and FOCUS parameters.
+TASK: Generate 3-5 LinkedIn search query variants with different targeting strategies.
 
-## EXPANSION PRINCIPLES
+## STRATEGY DEFINITIONS
 
-### Locations (Region-Aware)
-Expand locations intelligently based on geography:
-- Include city + metro area + state/province variants
-- For major cities, include common abbreviations and nicknames
-- Adapt expansion depth to location type (city-states need fewer variants)
+1. **broad** - High volume, lower precision. Uses general terms, expanded synonyms, minimal exclusions.
+2. **narrow** - Low volume, high precision. Uses exact titles, specific terms, strict filters.
+3. **industry_focused** - Prioritizes industry/sector keywords with deep vertical expansion.
+4. **technology_focused** - Prioritizes technology/platform keywords.
+5. **seniority_focused** - Prioritizes executive level and decision-maker title variants.
 
-Examples:
-- "San Francisco" → "San Francisco", "Bay Area", "SF", "Silicon Valley"
-- "London" → "London", "Greater London", "City of London"
-- "New York" → "New York", "NYC", "Manhattan", "New York City"
-- "Singapore" → "Singapore", "SG" (city-state, fewer variants)
-- "São Paulo" → "São Paulo", "SP", "Grande São Paulo"
-- "Mumbai" → "Mumbai", "Bombay", "Maharashtra"
+## INDONESIAN MARKET MAPPINGS
 
-### Seniority Titles (Global)
-Expand titles with regional awareness:
-- Always include acronym AND full form (CEO / "Chief Executive Officer")
-- Include regional equivalents when targeting specific markets:
-  - German: Geschäftsführer, Vorstand, Vorstandsvorsitzender
-  - French: PDG, Directeur Général, DG
-  - Spanish/LATAM: Director General, Gerente General, CEO
-  - Portuguese/Brazil: Diretor Executivo, CEO
-  - Dutch: Algemeen Directeur, CEO
-  - Japanese: 代表取締役, CEO (use English for LinkedIn)
-  - Chinese: 首席执行官, CEO (use English for LinkedIn)
-- Include related decision-maker roles: Founder, Co-founder, Partner, Owner, President
+### Locations
+- Jakarta → "Jakarta" OR "DKI Jakarta" OR "Jakarta Pusat" OR "Jakarta Selatan"
+- Surabaya → "Surabaya" OR "East Java" OR "Jawa Timur"
+- Bandung → "Bandung" OR "West Java" OR "Jawa Barat"
+- Bali → "Bali" OR "Denpasar" OR "Badung"
+- Medan → "Medan" OR "North Sumatra"
+- Indonesia → Indonesia OR Indonesian
 
-Common title expansions:
-- CEO → CEO, "Chief Executive Officer", Founder, "Co-founder", President, "Managing Director"
-- CTO → CTO, "Chief Technology Officer", "VP Engineering", "VP Technology", "Head of Engineering"
-- CFO → CFO, "Chief Financial Officer", "Finance Director", "VP Finance"
-- CMO → CMO, "Chief Marketing Officer", "VP Marketing", "Head of Marketing"
-- Director → Director, VP, "Vice President", Head, "General Manager"
+### Seniority Levels
+- CEO → CEO OR "Chief Executive Officer" OR Founder OR "Co-founder" OR "President Director" OR "Direktur Utama"
+- CTO → CTO OR "Chief Technology Officer" OR "VP Technology" OR "Technology Director" OR "Head of Engineering"
+- CIO → CIO OR "Chief Information Officer" OR "IT Director" OR "Head of IT"
+- CFO → CFO OR "Chief Financial Officer" OR "Finance Director"
+- Director → Director OR VP OR Head OR "General Manager"
+- Founder → Founder OR "Co-founder" OR "Company Founder" OR Entrepreneur
 
 ### Industries
-Expand to relevant sub-verticals and adjacent terms:
-- fintech → fintech, "financial technology", payment, lending, "digital banking", insurtech, "wealth tech", neobank
-- SaaS → SaaS, "software as a service", "B2B software", "enterprise software", "cloud software"
-- AI → AI, "artificial intelligence", "machine learning", "deep learning", "generative AI", ML, "computer vision", NLP
-- healthcare → healthcare, "health tech", "digital health", medtech, "medical technology", biotech, pharma
-- e-commerce → "e-commerce", ecommerce, "online retail", marketplace, D2C, "direct to consumer", retail tech
-- manufacturing → manufacturing, "industrial automation", "smart factory", "Industry 4.0", production
+- fintech → fintech OR "financial technology" OR "banking technology" OR payment OR lending OR "digital banking"
+- cloud → "cloud computing" OR "cloud services" OR AWS OR Azure OR "Google Cloud" OR GCP
+- AI → AI OR "artificial intelligence" OR "machine learning" OR "generative AI" OR "deep learning"
+- manufacturing → manufacturing OR production OR factory OR "Industry 4.0" OR "smart factory"
+- ecommerce → "e-commerce" OR ecommerce OR "online retail" OR marketplace OR "digital commerce"
+- healthcare → healthcare OR "health tech" OR hospital OR "medical technology" OR "digital health"
 
-### Standard Exclusions (always include)
--recruiter -hr -"human resources" -intern -student -graduate -trainer -consultant -freelance
-
-## QUERY TYPES (10 available)
-
-1. **broad**: Maximum reach. 3-4 location variants, expanded title synonyms, wide industry terms.
-2. **narrow**: Maximum precision. Exact location, exact title, core industry term only.
-3. **balanced**: Middle ground. 2 location variants, 2-3 title variants, 2 industry terms.
-4. **industry_focused**: Deep industry vertical expansion with comprehensive sub-sector coverage.
-5. **seniority_focused**: Comprehensive executive title coverage across C-suite and decision-makers.
-6. **location_focused**: Deep geographic expansion with regional variants and nearby areas.
-7. **ultra_broad**: Maximum expansion across ALL dimensions - location, title, and industry.
-8. **ultra_narrow**: Single exact term per category, maximum precision for specific targeting.
-9. **decision_maker**: Targets key decision-makers, budget holders, and purchasing influencers.
-10. **emerging_market**: Optimized for emerging market profiles with local title variants.
-
-## OUTPUT RULES
-
-- Generate exactly {count} total queries
-- Each query type can have ONE string OR an ARRAY of multiple strings
-- Distribute queries across different types for variety
-- If FOCUS is specified, generate more queries of that type
-- If count > 5, use arrays to provide multiple variants per type
+### Technologies
+- cloud → "cloud computing" OR "cloud migration" OR "digital transformation" OR devops
+- startup → startup OR "scale-up" OR entrepreneur OR "fast-growing" OR "tech startup"
+- enterprise → enterprise OR multinational OR corporation OR BUMN OR Tbk OR "Fortune 500"
+- digital → "digital transformation" OR "digital innovation" OR "digital strategy"
 
 ## QUERY PATTERN
 
-site:linkedin.com/in [LOCATION_TERMS] [SENIORITY_TERMS] [INDUSTRY_TERMS] [EXCLUSIONS]
+```
+site:linkedin.com/in [LOCATION] [SENIORITY] [INDUSTRY] [TECHNOLOGY] [EXCLUSIONS]
+```
 
-- Use OR operators for synonyms: (term1 OR "term 2" OR term3)
-- Use quotes for multi-word phrases: "Chief Executive Officer"
-- Keep queries under 200 characters when possible for search engine compatibility
+### Standard Exclusions
+-recruiter -hr -"human resources" -intern -student -graduate -trainer -consultant -freelance
 
-## OUTPUT EXAMPLES
+## REQUIREMENTS
 
-### Example 1: count=3 (single strings)
-{{
-  "input": "CTO San Francisco AI startup",
-  "queries": {{
-    "broad": "site:linkedin.com/in (\"San Francisco\" OR \"Bay Area\" OR \"Silicon Valley\") (CTO OR \"Chief Technology Officer\" OR \"VP Engineering\") (\"AI startup\" OR \"artificial intelligence\" OR \"machine learning\") -recruiter -hr -intern -student -consultant -freelance",
-    "narrow": "site:linkedin.com/in \"San Francisco\" CTO \"AI startup\" -recruiter -hr -intern -student -consultant -freelance",
-    "balanced": "site:linkedin.com/in (\"San Francisco\" OR \"Bay Area\") (CTO OR \"Chief Technology Officer\") (\"AI startup\" OR \"artificial intelligence\") -recruiter -hr -intern -student -consultant -freelance"
-  }}
-}}
-
-### Example 2: count=10 (arrays for multiple variants)
-{{
-  "input": "CEO Jakarta fintech",
-  "queries": {{
-    "broad": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Indonesia) (CEO OR \"Chief Executive Officer\" OR \"Managing Director\") (fintech OR \"financial technology\" OR payment) -recruiter -hr -intern -student -consultant -freelance",
-      "site:linkedin.com/in (Jakarta OR Jabodetabek OR \"DKI Jakarta\") (CEO OR Founder OR President) (fintech OR lending OR \"digital banking\") -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "narrow": [
-      "site:linkedin.com/in Jakarta CEO fintech -recruiter -hr -intern -student -consultant -freelance",
-      "site:linkedin.com/in \"DKI Jakarta\" \"Chief Executive Officer\" \"financial technology\" -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "balanced": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\") (CEO OR \"Managing Director\") (fintech OR payment) -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "industry_focused": [
-      "site:linkedin.com/in Jakarta (CEO OR Founder) (fintech OR \"financial technology\" OR payment OR lending OR \"digital banking\" OR insurtech OR neobank) -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "seniority_focused": [
-      "site:linkedin.com/in Jakarta (CEO OR \"Chief Executive Officer\" OR \"Managing Director\" OR Founder OR \"Co-founder\" OR President OR \"Country Head\" OR \"Direktur Utama\") fintech -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "location_focused": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Jabodetabek OR \"DKI Jakarta\" OR Tangerang OR Bekasi OR Depok OR Bogor) CEO fintech -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "decision_maker": [
-      "site:linkedin.com/in Jakarta (CEO OR Founder OR \"Board Member\" OR \"Country Manager\" OR \"General Manager\") fintech -recruiter -hr -intern -student -consultant -freelance"
-    ]
-  }}
-}}
+1. Parse the input to extract location, seniority, industry, and technology components
+2. Generate exactly 3-5 distinct query variants
+3. Each variant MUST use a different strategy_type
+4. Include at least one "broad" and one "narrow" variant
+5. Ensure queries are syntactically valid for Google search
+6. Use OR operators for synonyms within categories
+7. Use quotes for multi-word phrases
+8. All queries must start with site:linkedin.com/in
 
 ## OUTPUT FORMAT
 
-Return ONLY valid JSON (no markdown, no code blocks):
+CRITICAL: You MUST return ONLY raw JSON. Do not include any markdown formatting, explanations, or additional text.
+Do not wrap the JSON in code blocks or backticks.
+Return ONLY the JSON object matching this exact structure:
 {{
-  "input": "<original input>",
-  "queries": {{
-    "<type>": "<query>" OR ["<query1>", "<query2>", ...],
-    ...
-  }}
-}}
+  "metadata": {{
+    "original_input": "<the input text>",
+    "parsed_components": {{
+      "locations": ["<extracted locations>"],
+      "seniority": ["<extracted titles>"],
+      "industries": ["<extracted industries>"],
+      "technologies": ["<extracted technologies>"]
+    }}
+  }},
+  "variants": [
+    {{
+      "query": "site:linkedin.com/in ...",
+      "strategy_type": "broad|narrow|industry_focused|technology_focused|seniority_focused",
+      "expected_precision": "low|medium|high",
+      "expected_volume": "low|medium|high",
+      "explanation": "Why this variant targets differently",
+      "targeting_focus": ["primary", "dimensions"]
+    }}
+  ]
+}}'''
 
-Generate exactly {count} total queries distributed across appropriate types.'''
 
-
-def build_prompt(
-    input_text: str,
-    count: int = 3,
-    focus: Optional[str] = None
-) -> str:
-    """Build the prompt for query generation.
-
-    Args:
-        input_text: The search query input (e.g., "CEO San Francisco fintech")
-        count: Number of query variants to generate (1-30)
-        focus: Optional focus type (broad, narrow, balanced, industry_focused, seniority_focused, etc.)
-
-    Returns:
-        Formatted prompt string
-    """
-    focus_str = focus if focus else "none (generate balanced mix)"
-    return QUERY_GENERATION_PROMPT.format(
-        input_text=input_text,
-        count=count,
-        focus=focus_str
-    )
+def build_prompt(input_text: str) -> str:
+    """Build the prompt for query generation."""
+    return QUERY_GENERATION_PROMPT.format(input_text=input_text)

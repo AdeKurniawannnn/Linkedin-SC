@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["input", "queries"],
+  "properties": {
+    "input": {
+      "type": "string",
+      "description": "The original natural language input"
+    },
+    "queries": {
+      "type": "object",
+      "description": "Generated LinkedIn search queries by strategy type",
+      "properties": {
+        "broad": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum reach query with expanded synonyms"
+        },
+        "narrow": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum precision query with exact terms"
+        },
+        "balanced": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Middle ground between broad and narrow"
+        },
+        "industry_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Deep industry vertical expansion"
+        },
+        "seniority_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Comprehensive executive title coverage"
+        },
+        "location_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Deep geographic expansion with regional variants"
+        },
+        "ultra_broad": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum expansion across all dimensions"
+        },
+        "ultra_narrow": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Single exact term per category, maximum precision"
+        },
+        "decision_maker": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Targets key decision-makers and budget holders"
+        },
+        "emerging_market": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Optimized for emerging market LinkedIn profiles"
+        }
+      },
+      "minProperties": 1,
+      "maxProperties": 30
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional metadata (only included when debug=true)",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp when generated"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used for generation"
+        }
+      }
+    }
+  }
+}

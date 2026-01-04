@@ -4,19 +4,29 @@ LinkedIn lead generation query builder using Claude Agent SDK and GLM 4.7 model.
 
 ## Overview
 
-This agent generates **1-30 optimized LinkedIn search query variants** from natural language inputs, targeting global B2B markets with different search strategies.
+This agent generates 3-5 optimized LinkedIn search query variants from natural language inputs, targeting Indonesian B2B markets with different search strategies (broad, narrow, industry-focused, technology-focused, seniority-focused).
 
 **Built with:** [Claude Agent SDK](https://docs.claude.com/en/docs/claude-code/sdk) + [GLM 4.7](https://z.ai)
+
+## Differences from `agent/`
+
+| Aspect | `agent/` (Original) | `agent-sdk/` (This Version) |
+|--------|---------------------|---------------------------|
+| Backend | Subprocess → Claude CLI | Direct SDK `query()` calls |
+| Interface | CLI + Library | Library only |
+| Dependencies | `asyncio` (stdlib only) | `claude-agent-sdk` |
+| Response Handling | Parse stdout JSON | Iterate message objects |
+| Invocation | `python -m agent.cli` | `from agent_sdk import GLMQueryAgent` |
 
 ## Installation
 
 ```bash
-pip install claude-agent-sdk python-dotenv
+pip install claude-agent-sdk
 ```
 
 ## Configuration
 
-Set environment variables (or use `.env` file):
+Set environment variables:
 
 ```bash
 export ANTHROPIC_AUTH_TOKEN="your-glm-token.suffix"
@@ -29,65 +39,46 @@ export GLM_MODEL="glm-4.7"  # Optional (default)
 ### Basic Example
 
 ```python
-from agent import GLMQueryAgent
+from agent_sdk import GLMQueryAgent
 
+# Initialize agent
 agent = GLMQueryAgent()
 
-# Generate 3 variants (default)
+# Generate variants (synchronous)
 result = agent.generate_variants_sync("CEO Jakarta fintech")
 
-for query_type, query in result.queries.items():
-    print(f"[{query_type}] {query}")
+# Display results
+for variant in result.variants:
+    print(f"[{variant.strategy_type}] {variant.query}")
 ```
 
-### Async Example with Options
+### Async Example
 
 ```python
 import asyncio
-from agent import GLMQueryAgent
+from agent_sdk import GLMQueryAgent
 
 async def main():
     agent = GLMQueryAgent(timeout=180)
+    result = await agent.generate_variants("CTO Surabaya cloud computing")
 
-    # Generate 10 variants with debug metadata
-    result = await agent.generate_variants(
-        "CTO Singapore AI startup",
-        count=10,
-        focus="seniority_focused",
-        debug=True
-    )
-
-    for query_type, queries in result.queries.items():
-        print(f"[{query_type}]")
-        if isinstance(queries, list):
-            for q in queries:
-                print(f"  - {q}")
-        else:
-            print(f"  {queries}")
-
-    if result.meta:
-        print(f"Generated at: {result.meta['timestamp']}")
+    for variant in result.variants:
+        print(f"Strategy: {variant.strategy_type}")
+        print(f"Query: {variant.query}")
+        print(f"Explanation: {variant.explanation}")
+        print()
 
 asyncio.run(main())
 ```
 
-### Generate Many Variants
+### Custom Configuration
 
 ```python
-# Generate up to 30 query variants
-result = await agent.generate_variants(
-    "CFO London fintech",
-    count=30,
-    debug=True
+agent = GLMQueryAgent(
+    timeout=300,
+    model="glm-4.7",
+    base_url="https://api.z.ai/api/anthropic"
 )
-
-# Queries are distributed across types, with arrays for multiple variants
-# {
-#   "broad": ["query1", "query2", "query3"],
-#   "narrow": ["query1", "query2"],
-#   "balanced": ["query1", "query2"],
-#   ...
-# }
 ```
 
 ## API Reference
@@ -100,122 +91,69 @@ result = await agent.generate_variants(
 GLMQueryAgent(timeout=120, model=None, base_url=None)
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `timeout` | int | 120 | API call timeout in seconds |
-| `model` | str | `glm-4.7` | Model name (or `GLM_MODEL` env var) |
-| `base_url` | str | `https://api.z.ai/api/anthropic` | API endpoint (or `GLM_BASE_URL` env var) |
+- `timeout` (int): API call timeout in seconds (default: 120)
+- `model` (str): Model name (default: `glm-4.7` or `GLM_MODEL` env var)
+- `base_url` (str): API base URL (default: `https://api.z.ai/api/anthropic` or `GLM_BASE_URL` env var)
 
 #### Methods
 
-**`generate_variants(input_text, count=3, focus=None, debug=False)`** (async)
+**`generate_variants(input_text: str) -> QueryResult`** (async)
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `input_text` | str | *required* | Natural language input (e.g., "CEO Jakarta fintech") |
-| `count` | int | 3 | Number of queries to generate (1-30) |
-| `focus` | str | None | Focus on specific query type |
-| `debug` | bool | False | Include metadata (timestamp, model) |
+Generate query variants from natural language input.
 
-**`generate_variants_sync(...)`** - Synchronous wrapper.
+**`generate_variants_sync(input_text: str) -> QueryResult`** (sync)
+
+Synchronous wrapper for `generate_variants()`.
 
 ### Data Classes
 
 **`QueryResult`**
-```python
-@dataclass
-class QueryResult:
-    input: str                        # Original input text
-    queries: Dict[str, str | list]    # Query type → query string or array
-    meta: Optional[Dict[str, str]]    # Metadata (if debug=True)
-```
+- `metadata` (dict): Original input, parsed components, timestamp, model
+- `variants` (list[QueryVariant]): Generated query variants
+- `raw_response` (dict, optional): Raw API response
+
+**`QueryVariant`**
+- `query` (str): The LinkedIn search query
+- `strategy_type` (str): `broad` | `narrow` | `industry_focused` | `technology_focused` | `seniority_focused`
+- `expected_precision` (str): `low` | `medium` | `high`
+- `expected_volume` (str): `low` | `medium` | `high`
+- `explanation` (str): Why this variant targets differently
+- `targeting_focus` (list[str]): Primary targeting dimensions
 
 ### Exceptions
 
-| Exception | Description |
-|-----------|-------------|
-| `GLMQueryError` | Base exception |
-| `GLMAuthError` | Authentication failed (missing/invalid token) |
-| `GLMTimeoutError` | API call timed out |
-| `GLMValidationError` | Response doesn't match schema |
-
-## Query Types (10 Available)
-
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `broad` | Maximum reach with expanded synonyms | Initial prospecting |
-| `narrow` | Maximum precision with exact terms | Targeted outreach |
-| `balanced` | Middle ground approach | General purpose |
-| `industry_focused` | Deep industry vertical expansion | Sector-specific campaigns |
-| `seniority_focused` | Comprehensive title coverage | Executive targeting |
-| `location_focused` | Deep geographic expansion | Regional campaigns |
-| `ultra_broad` | Maximum expansion across all dimensions | Wide net casting |
-| `ultra_narrow` | Single exact term per category | Laser-focused targeting |
-| `decision_maker` | Budget holders and influencers | Sales outreach |
-| `emerging_market` | Local title variants | APAC/LATAM/EMEA markets |
-
-## Response Format
-
-### Single Queries (count ≤ 5)
-```json
-{
-  "input": "CEO Jakarta fintech",
-  "queries": {
-    "broad": "site:linkedin.com/in ...",
-    "narrow": "site:linkedin.com/in ...",
-    "balanced": "site:linkedin.com/in ..."
-  }
-}
-```
-
-### Multiple Variants (count > 5)
-```json
-{
-  "input": "CEO Jakarta fintech",
-  "queries": {
-    "broad": [
-      "site:linkedin.com/in (Jakarta OR ...) ...",
-      "site:linkedin.com/in (DKI Jakarta OR ...) ..."
-    ],
-    "narrow": [
-      "site:linkedin.com/in Jakarta CEO fintech ...",
-      "site:linkedin.com/in \"Greater Jakarta\" ..."
-    ],
-    "industry_focused": [
-      "site:linkedin.com/in Jakarta (fintech OR payment OR ...) ..."
-    ]
-  }
-}
-```
+- `GLMQueryError` - Base exception
+- `GLMAuthError` - Authentication failed
+- `GLMTimeoutError` - API call timed out
+- `GLMValidationError` - Response doesn't match schema
 
 ## Testing
 
+Run the test example:
+
 ```bash
 cd agent-sdk
-uv run test_example.py
+python test_example.py
 ```
 
 Expected output:
 ```
-GLM Query Agent SDK Test (v2.0)
+GLM Query Agent SDK Test
 ==================================================
 
 Input: CEO Jakarta fintech
-Count: 10
-Focus: none
-Debug: True
+Model: glm-4.7
+Base URL: https://api.z.ai/api/anthropic
 
 Generating query variants...
 
-Generated 10 queries across 7 types:
+✓ Generated 5 variants:
 
-[broad]
-  1. site:linkedin.com/in (Jakarta OR "Greater Jakarta" ...) ...
-  2. site:linkedin.com/in (Jakarta OR Jabodetabek ...) ...
+1. [broad]
+   Query: site:linkedin.com/in ...
+   ...
 
-[narrow]
-  1. site:linkedin.com/in Jakarta CEO fintech ...
-  ...
+✓ Saved results to test_output.json
 
 Test completed successfully!
 ```
@@ -224,48 +162,60 @@ Test completed successfully!
 
 ```
 agent-sdk/
-├── __init__.py              # Package exports
-├── agent.py                 # Core GLMQueryAgent class
-├── prompts.py               # Prompt templates
+├── __init__.py          # Package exports
+├── agent.py             # Core GLMQueryAgent class (SDK-based)
+├── prompts.py           # Prompt templates
 ├── schemas/
 │   └── query_variants.json  # JSON schema for structured output
-├── test_example.py          # Test script
-└── README.md
+├── test_example.py      # Test script
+└── README.md            # This file
 ```
 
-## Global Market Support
+## Strategy Types
 
-The agent includes intelligent expansion for:
+1. **broad** - High volume, lower precision. Expanded synonyms, minimal exclusions.
+2. **narrow** - Low volume, high precision. Exact titles, specific terms, strict filters.
+3. **industry_focused** - Prioritizes industry/sector keywords with deep vertical expansion.
+4. **technology_focused** - Prioritizes technology/platform keywords.
+5. **seniority_focused** - Prioritizes executive level and decision-maker title variants.
 
-**Locations** (Region-Aware)
-- US: San Francisco → Bay Area, SF, Silicon Valley
-- UK: London → Greater London, City of London
-- APAC: Singapore, Jakarta, Mumbai, Tokyo
-- LATAM: São Paulo, Mexico City
-- EMEA: Berlin, Amsterdam, Dubai
+## Indonesian Market Mappings
 
-**Seniority Titles** (Multi-Language)
-- English: CEO, CTO, CFO, Managing Director
-- German: Geschäftsführer, Vorstand
-- French: PDG, Directeur Général
-- Indonesian: Direktur Utama
-- Spanish: Director General
-
-**Industries**
-- Fintech, SaaS, AI/ML, Healthcare, E-commerce, Manufacturing
+The agent includes specialized mappings for:
+- **Locations**: Jakarta, Surabaya, Bandung, Bali, Medan
+- **Seniority**: CEO, CTO, CIO, CFO, Director, Founder (with Indonesian equivalents)
+- **Industries**: fintech, cloud, AI, manufacturing, ecommerce, healthcare
+- **Technologies**: cloud, startup, enterprise, digital transformation
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ANTHROPIC_AUTH_TOKEN` | Yes | - | GLM API token |
-| `ANTHROPIC_BASE_URL` | No | `https://api.z.ai/api/anthropic` | API endpoint |
-| `GLM_MODEL` | No | `glm-4.7` | Model to use |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_AUTH_TOKEN` | *Required* | GLM API token (format: `token.suffix`) |
+| `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` | GLM API endpoint |
+| `GLM_MODEL` | `glm-4.7` | Model to use |
+
+## Migration from `agent/`
+
+The API is backward compatible. Replace imports:
+
+```python
+# Old (CLI-based)
+from agent.glm_query_agent import GLMQueryAgent
+
+# New (SDK-based)
+from agent_sdk import GLMQueryAgent
+
+# Usage remains the same
+agent = GLMQueryAgent()
+result = agent.generate_variants_sync("CEO Jakarta fintech")
+```
 
 ## Resources
 
 - [Claude Agent SDK Documentation](https://docs.claude.com/en/docs/claude-code/sdk)
 - [GLM Coding Plan](https://z.ai/subscribe?ic=8JVLJQFSKB)
+- [Original `agent/` implementation](../agent/)
 
 ## License
 

@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["metadata", "variants"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["original_input", "parsed_components"],
+      "properties": {
+        "original_input": {
+          "type": "string",
+          "description": "The original natural language input"
+        },
+        "parsed_components": {
+          "type": "object",
+          "properties": {
+            "locations": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted location components"
+            },
+            "seniority": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted seniority/title components"
+            },
+            "industries": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted industry/sector components"
+            },
+            "technologies": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted technology/platform components"
+            }
+          }
+        }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["query", "strategy_type", "expected_precision", "explanation"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The complete LinkedIn search query starting with site:linkedin.com/in"
+          },
+          "strategy_type": {
+            "type": "string",
+            "enum": ["broad", "narrow", "industry_focused", "technology_focused", "seniority_focused"],
+            "description": "The targeting strategy used for this variant"
+          },
+          "expected_precision": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Expected precision of search results"
+          },
+          "expected_volume": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Expected volume of search results"
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Why this variant targets differently"
+          },
+          "targeting_focus": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Primary targeting dimensions for this variant"
+          }
+        }
+      }
+    }
+  }
+}
