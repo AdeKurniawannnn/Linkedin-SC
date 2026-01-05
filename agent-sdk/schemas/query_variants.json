@@ -1,79 +1,101 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["metadata", "variants"],
+  "required": ["input", "queries"],
   "properties": {
-    "metadata": {
-      "type": "object",
-      "required": ["original_input", "parsed_components"],
-      "properties": {
-        "original_input": {
-          "type": "string",
-          "description": "The original natural language input"
-        },
-        "parsed_components": {
-          "type": "object",
-          "properties": {
-            "locations": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Extracted location components"
-            },
-            "seniority": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Extracted seniority/title components"
-            },
-            "industries": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Extracted industry/sector components"
-            },
-            "technologies": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Extracted technology/platform components"
-            }
-          }
-        }
-      }
+    "input": {
+      "type": "string",
+      "description": "The original natural language input"
     },
-    "variants": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 5,
-      "items": {
-        "type": "object",
-        "required": ["query", "strategy_type", "expected_precision", "explanation"],
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "The complete LinkedIn search query starting with site:linkedin.com/in"
-          },
-          "strategy_type": {
-            "type": "string",
-            "enum": ["broad", "narrow", "industry_focused", "technology_focused", "seniority_focused"],
-            "description": "The targeting strategy used for this variant"
-          },
-          "expected_precision": {
-            "type": "string",
-            "enum": ["low", "medium", "high"],
-            "description": "Expected precision of search results"
-          },
-          "expected_volume": {
-            "type": "string",
-            "enum": ["low", "medium", "high"],
-            "description": "Expected volume of search results"
-          },
-          "explanation": {
-            "type": "string",
-            "description": "Why this variant targets differently"
-          },
-          "targeting_focus": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Primary targeting dimensions for this variant"
-          }
+    "queries": {
+      "type": "object",
+      "description": "Generated LinkedIn search queries by strategy type",
+      "properties": {
+        "broad": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum reach query with expanded synonyms"
+        },
+        "narrow": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum precision query with exact terms"
+        },
+        "balanced": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Middle ground between broad and narrow"
+        },
+        "industry_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Deep industry vertical expansion"
+        },
+        "seniority_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Comprehensive executive title coverage"
+        },
+        "location_focused": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Deep geographic expansion with regional variants"
+        },
+        "ultra_broad": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Maximum expansion across all dimensions"
+        },
+        "ultra_narrow": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Single exact term per category, maximum precision"
+        },
+        "decision_maker": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Targets key decision-makers and budget holders"
+        },
+        "emerging_market": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Optimized for emerging market LinkedIn profiles"
+        }
+      },
+      "minProperties": 1,
+      "maxProperties": 30
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional metadata (only included when debug=true)",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp when generated"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used for generation"
         }
       }
     }
