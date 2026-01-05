@@ -7,8 +7,8 @@ Example:
     >>> from agent_sdk import GLMQueryAgent
     >>> agent = GLMQueryAgent()
     >>> result = agent.generate_variants_sync("CEO Jakarta fintech")
-    >>> for variant in result.variants:
-    ...     print(f"{variant.strategy_type}: {variant.query}")
+    >>> for query_type, query in result.queries.items():
+    ...     print(f"{query_type}: {query}")
 """
 
 from .agent import (
@@ -17,17 +17,15 @@ from .agent import (
     GLMTimeoutError,
     GLMValidationError,
     GLMAuthError,
-    QueryVariant,
     QueryResult
 )
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __all__ = [
     "GLMQueryAgent",
     "GLMQueryError",
     "GLMTimeoutError",
     "GLMValidationError",
     "GLMAuthError",
-    "QueryVariant",
     "QueryResult"
 ]

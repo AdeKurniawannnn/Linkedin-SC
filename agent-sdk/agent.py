@@ -3,20 +3,22 @@
 import asyncio
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
+from dotenv import load_dotenv
 from claude_agent_sdk import (
     query,
     ClaudeAgentOptions,
-    AssistantMessage,
     ResultMessage,
-    TextBlock,
     ClaudeSDKError,
     ProcessError
 )
+
+# Load environment variables from .env file
+load_dotenv()
 
 try:
     from .prompts import build_prompt
@@ -24,7 +26,6 @@ except ImportError:
     from prompts import build_prompt
 
 
-# Keep same exception hierarchy for API compatibility
 class GLMQueryError(Exception):
     """Base exception for GLM query errors."""
     pass
@@ -45,24 +46,12 @@ class GLMAuthError(GLMQueryError):
     pass
 
 
-# Keep same dataclasses for API compatibility
-@dataclass
-class QueryVariant:
-    """A single query variant with targeting strategy."""
-    query: str
-    strategy_type: str
-    expected_precision: str
-    explanation: str
-    expected_volume: str = "medium"
-    targeting_focus: List[str] = field(default_factory=list)
-
-
 @dataclass
 class QueryResult:
-    """Result of query generation containing metadata and variants."""
-    metadata: Dict[str, Any]
-    variants: List[QueryVariant]
-    raw_response: Optional[Dict[str, Any]] = None
+    """Result of query generation."""
+    input: str
+    queries: Dict[str, str]
+    meta: Optional[Dict[str, str]] = None
 
 
 class GLMQueryAgent:
@@ -70,6 +59,8 @@ class GLMQueryAgent:
 
     DEFAULT_MODEL = "glm-4.7"
     DEFAULT_BASE_URL = "https://api.z.ai/api/anthropic"
+
+    VALID_FOCUS_TYPES = {"broad", "narrow", "balanced", "industry_focused", "seniority_focused"}
 
     def __init__(
         self,
@@ -119,17 +110,26 @@ class GLMQueryAgent:
         with open(self.schema_path) as f:
             return json.load(f)
 
-    async def generate_variants(self, input_text: str) -> QueryResult:
+    async def generate_variants(
+        self,
+        input_text: str,
+        count: int = 3,
+        focus: Optional[str] = None,
+        debug: bool = False
+    ) -> QueryResult:
         """Generate query variants from natural language input.
 
         Args:
             input_text: Natural language input (e.g., "CEO Jakarta fintech")
+            count: Number of query variants to generate (1-5, default: 3)
+            focus: Optional focus type (broad, narrow, balanced, industry_focused, seniority_focused)
+            debug: If True, include metadata (timestamp, model) in output
 
         Returns:
-            QueryResult with metadata and list of query variants
+            QueryResult with input, queries dict, and optional meta
 
         Raises:
-            ValueError: If input_text is empty
+            ValueError: If input_text is empty or parameters are invalid
             GLMAuthError: If authentication fails
             GLMTimeoutError: If API call times out
             GLMValidationError: If response doesn't match schema
@@ -138,8 +138,14 @@ class GLMQueryAgent:
         if not input_text or not input_text.strip():
             raise ValueError("Input text cannot be empty")
 
+        if not 1 <= count <= 30:
+            raise ValueError("Count must be between 1 and 30")
+
+        if focus and focus not in self.VALID_FOCUS_TYPES:
+            raise ValueError(f"Focus must be one of: {', '.join(self.VALID_FOCUS_TYPES)}")
+
         self._setup_env()
-        prompt = build_prompt(input_text)
+        prompt = build_prompt(input_text, count=count, focus=focus)
         schema = self._load_schema()
 
         options = ClaudeAgentOptions(
@@ -157,7 +163,6 @@ class GLMQueryAgent:
                 if isinstance(message, ResultMessage):
                     if message.is_error:
                         raise GLMQueryError(f"Agent error: {message.result}")
-                    # Get structured output from ResultMessage
                     if hasattr(message, 'structured_output') and message.structured_output:
                         response = message.structured_output
                         break
@@ -174,14 +179,20 @@ class GLMQueryAgent:
         if not response:
             raise GLMValidationError("No structured output received from agent")
 
-        return self._parse_response(input_text, response)
+        return self._parse_response(input_text, response, debug)
 
-    def _parse_response(self, input_text: str, response: Dict) -> QueryResult:
+    def _parse_response(
+        self,
+        input_text: str,
+        response: Dict[str, Any],
+        debug: bool
+    ) -> QueryResult:
         """Parse GLM response into QueryResult.
 
         Args:
             input_text: Original input text
             response: Raw JSON response from GLM
+            debug: Whether to include metadata
 
         Returns:
             Parsed QueryResult
@@ -189,46 +200,44 @@ class GLMQueryAgent:
         Raises:
             GLMValidationError: If response structure is invalid
         """
-        if "variants" not in response:
-            raise GLMValidationError("Response missing 'variants' field")
+        if "queries" not in response:
+            raise GLMValidationError("Response missing 'queries' field")
 
-        if len(response.get("variants", [])) < 3:
-            raise GLMValidationError(
-                f"Expected at least 3 variants, got {len(response.get('variants', []))}"
-            )
+        queries = response.get("queries", {})
+        if not queries:
+            raise GLMValidationError("No queries generated")
 
-        variants = [
-            QueryVariant(
-                query=v.get("query", ""),
-                strategy_type=v.get("strategy_type", ""),
-                expected_precision=v.get("expected_precision", "medium"),
-                expected_volume=v.get("expected_volume", "medium"),
-                explanation=v.get("explanation", ""),
-                targeting_focus=v.get("targeting_focus", [])
-            )
-            for v in response.get("variants", [])
-        ]
-
-        metadata = response.get("metadata", {
-            "original_input": input_text,
-            "parsed_components": {}
-        })
-        metadata["timestamp"] = datetime.now().isoformat()
-        metadata["model_used"] = self.model
+        meta = None
+        if debug:
+            meta = {
+                "timestamp": datetime.now().isoformat(),
+                "model": self.model
+            }
 
         return QueryResult(
-            metadata=metadata,
-            variants=variants,
-            raw_response=response
+            input=input_text,
+            queries=queries,
+            meta=meta
         )
 
-    def generate_variants_sync(self, input_text: str) -> QueryResult:
+    def generate_variants_sync(
+        self,
+        input_text: str,
+        count: int = 3,
+        focus: Optional[str] = None,
+        debug: bool = False
+    ) -> QueryResult:
         """Synchronous wrapper for generate_variants.
 
         Args:
             input_text: Natural language input
+            count: Number of query variants to generate (1-5, default: 3)
+            focus: Optional focus type
+            debug: If True, include metadata in output
 
         Returns:
-            QueryResult with metadata and list of query variants
+            QueryResult with input, queries dict, and optional meta
         """
-        return asyncio.run(self.generate_variants(input_text))
+        return asyncio.run(
+            self.generate_variants(input_text, count=count, focus=focus, debug=debug)
+        )
