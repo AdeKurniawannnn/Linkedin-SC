@@ -3,7 +3,8 @@
         test-unit test-unit-v test-services test-routes test-utils test-integration test-backend-cov test-cov-term \
         test-vitest test-vitest-watch test-components test-stores test-page test-e2e test-e2e-ui test-frontend-cov \
         test-install \
-        convex-push convex-deploy convex-dashboard
+        convex-push convex-deploy convex-dashboard \
+        agent-sdk agent-sdk-frontend agent-sdk-backend agent-sdk-install agent-sdk-clean
 
 # Get the directory where this Makefile lives (use CURDIR for paths with spaces)
 ROOT_DIR := $(CURDIR)
@@ -75,6 +76,13 @@ help:
 	@echo ""
 	@echo "$(BOLD)Setup:$(RESET)"
 	@echo "  $(DIM)make test-install$(RESET)    - Install test dependencies"
+	@echo ""
+	@echo "$(BOLD)Agent SDK (Query Generator):$(RESET)"
+	@echo "  $(BRIGHT_YELLOW)make agent-sdk$(RESET)       - Run agent-sdk frontend + backend"
+	@echo "  $(YELLOW)make agent-sdk-frontend$(RESET) - Frontend only (port 3001)"
+	@echo "  $(YELLOW)make agent-sdk-backend$(RESET)  - Backend only (port 8001)"
+	@echo "  $(DIM)make agent-sdk-install$(RESET) - Install agent-sdk dependencies"
+	@echo "  $(DIM)make agent-sdk-clean$(RESET)  - Stop agent-sdk services"
 
 # Run all 3 services (clean first to avoid port conflicts)
 dev: clean
@@ -267,3 +275,40 @@ test-install:
 	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
 		pip install -r requirements-dev.txt
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Test dependencies installed$(RESET)"
+
+# ============================================================================
+# AGENT SDK (Query Generator)
+# ============================================================================
+
+# Run both agent-sdk services
+agent-sdk: agent-sdk-clean
+	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) $(BOLD)Starting agent-sdk backend on $(BRIGHT_BLUE):8001$(RESET), frontend on $(BRIGHT_MAGENTA):3001$(RESET)$(BOLD)...$(RESET)"
+	@make -j2 agent-sdk-backend agent-sdk-frontend
+
+# Agent SDK Backend (FastAPI)
+agent-sdk-backend:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ AGENT-SDK BACKEND$(RESET) $(DIM)($(BRIGHT_BLUE)port 8001$(RESET)$(DIM))$(RESET)"
+	@echo "$(BRIGHT_BLUE)→$(RESET) Starting GLM Query API server..."
+	cd "$(ROOT_DIR)/agent-sdk" && source .venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
+
+# Agent SDK Frontend (Next.js)
+agent-sdk-frontend:
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ AGENT-SDK FRONTEND$(RESET) $(DIM)($(BRIGHT_MAGENTA)port 3001$(RESET)$(DIM))$(RESET)"
+	@echo "$(BRIGHT_MAGENTA)→$(RESET) Starting Query Generator UI..."
+	cd "$(ROOT_DIR)/agent-sdk/frontend" && npm run dev -- --port 3001
+
+# Install agent-sdk dependencies
+agent-sdk-install:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) Installing agent-sdk dependencies..."
+	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/agent-sdk" && uv venv .venv && source .venv/bin/activate && uv pip install -r api/requirements.txt
+	@echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/agent-sdk/frontend" && npm install
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Agent-SDK installation complete$(RESET)"
+
+# Stop agent-sdk services
+agent-sdk-clean:
+	@echo "$(BOLD)$(RED)→$(RESET) $(BOLD)Stopping agent-sdk services...$(RESET)"
+	-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
+	-lsof -ti:3001 | xargs kill -9 2>/dev/null || true
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Agent-SDK services stopped$(RESET)"
