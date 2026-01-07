@@ -59,6 +59,54 @@ export function calculateCompositeScore(
 }
 
 /**
+ * Safely parse JSON with fallback for malformed responses
+ * Handles LLM responses with unescaped quotes in string values
+ *
+ * @param jsonText - Raw JSON string (after markdown extraction)
+ * @returns Parsed object or null on failure
+ */
+function safeJsonParse(jsonText: string): unknown | null {
+  // First attempt: direct parse
+  try {
+    return JSON.parse(jsonText);
+  } catch {
+    // Continue to fallback attempts
+  }
+
+  // Second attempt: fix common quote issues in string values
+  try {
+    // Process line by line to fix unescaped quotes
+    const lines = jsonText.split('\n');
+    const fixedLines = lines.map(line => {
+      // Match lines with string values (key: "value" pattern)
+      const stringValueMatch = line.match(/^(\s*"[^"]+"\s*:\s*")(.*)(",?\s*)$/);
+      if (stringValueMatch) {
+        const [, prefix, value, suffix] = stringValueMatch;
+        // Escape unescaped quotes (not preceded by backslash)
+        const fixedValue = value.replace(/(?<!\\)"/g, '\\"');
+        return prefix + fixedValue + suffix;
+      }
+      return line;
+    });
+    return JSON.parse(fixedLines.join('\n'));
+  } catch {
+    // Continue to next fallback
+  }
+
+  // Third attempt: more aggressive fix for quotes in parentheses
+  try {
+    let fixed = jsonText;
+    // Fix pattern: ("word" -> (\"word\"
+    fixed = fixed.replace(/\("([^"\\]*)"/g, '(\\"$1\\"');
+    // Fix pattern: "word") -> \"word\")
+    fixed = fixed.replace(/"([^"\\]*)"\)/g, '\\"$1\\")');
+    return JSON.parse(fixed);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parse Pass 1 scoring response from LLM
  *
  * @param llmResponse - Raw LLM response string
@@ -75,8 +123,14 @@ export function parsePass1Response(llmResponse: string): Pass1ScoreResult {
       jsonText = codeBlockMatch[1].trim();
     }
 
-    // Parse JSON
-    const parsed = JSON.parse(jsonText);
+    // Parse JSON with fallback handling
+    const rawParsed = safeJsonParse(jsonText);
+    if (!rawParsed || typeof rawParsed !== 'object') {
+      throw new Error('Failed to parse JSON after all attempts');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed = rawParsed as any;
 
     // Validate structure
     if (
@@ -140,8 +194,14 @@ export function parsePass2Response(llmResponse: string): Pass2ScoreResult {
       jsonText = codeBlockMatch[1].trim();
     }
 
-    // Parse JSON
-    const parsed = JSON.parse(jsonText);
+    // Parse JSON with fallback handling
+    const rawParsed = safeJsonParse(jsonText);
+    if (!rawParsed || typeof rawParsed !== 'object') {
+      throw new Error('Failed to parse JSON after all attempts');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed = rawParsed as any;
 
     // Validate structure
     if (
@@ -193,6 +253,129 @@ export function parsePass2Response(llmResponse: string): Pass2ScoreResult {
 }
 
 /**
+ * Attempt to fix malformed JSON with unescaped quotes in string values
+ * This handles LLM responses that contain queries like:
+ * "query": "site:linkedin.com/in/ ("Chief Technology Officer" OR "VP")"
+ *
+ * @param jsonText - Potentially malformed JSON string
+ * @returns Fixed JSON string
+ */
+function fixMalformedJsonQuotes(jsonText: string): string {
+  // Strategy: Parse line by line and fix quote issues within JSON string values
+  // This regex matches the pattern: "key": "value with ("nested" quotes)"
+  // We need to escape the inner quotes that break JSON
+
+  // First, try to fix the most common pattern: unescaped quotes after ( and before )
+  // Pattern: ("word" becomes (\"word\"
+  let fixed = jsonText;
+
+  // Replace unescaped quotes within parentheses in string values
+  // Match pattern: "query": "...("Word")..." and escape the inner quotes
+  fixed = fixed.replace(
+    /("query"\s*:\s*")([^"]*?)(\(")/g,
+    (match, prefix, content, paren) => {
+      return prefix + content + '(\\"';
+    }
+  );
+
+  // Fix closing pattern: ")" within strings
+  fixed = fixed.replace(
+    /("\))([^"]*?")/g,
+    (match, closeParen, suffix) => {
+      return '\\")"' + suffix.slice(1);
+    }
+  );
+
+  // More comprehensive fix: process each line and fix quotes in query/reasoning values
+  const lines = fixed.split('\n');
+  const fixedLines = lines.map(line => {
+    // Check if this line has a JSON string value
+    const keyValueMatch = line.match(/^(\s*"(?:query|reasoning)"\s*:\s*")(.*)(",?\s*)$/);
+    if (keyValueMatch) {
+      const [, prefix, value, suffix] = keyValueMatch;
+      // Escape unescaped quotes in the value (but not already escaped ones)
+      // This regex finds quotes that aren't preceded by a backslash
+      const fixedValue = value.replace(/(?<!\\)"/g, '\\"');
+      return prefix + fixedValue + suffix;
+    }
+    return line;
+  });
+
+  return fixedLines.join('\n');
+}
+
+/**
+ * Extract queries using regex when JSON parsing fails completely
+ * This is a last-resort fallback for severely malformed JSON
+ *
+ * @param text - Raw text that failed JSON parsing
+ * @returns Array of extracted query objects
+ */
+function extractQueriesWithRegex(text: string): Array<{ query: string; reasoning: string }> {
+  const queries: Array<{ query: string; reasoning: string }> = [];
+  const seenQueries = new Set<string>();
+
+  // Pattern to match query and reasoning pairs
+  // Handles: "query": "...", "reasoning": "..."
+  // Uses a more permissive pattern that captures content between key markers
+  const queryPattern = /"query"\s*:\s*"([^"]*(?:"[^"]*)*?)"\s*,\s*"reasoning"\s*:\s*"([^"]*(?:"[^"]*)*?)"/g;
+
+  // Alternative pattern: match each object block
+  const objectPattern = /\{\s*"query"\s*:\s*"([\s\S]*?)"\s*,\s*"reasoning"\s*:\s*"([\s\S]*?)"\s*\}/g;
+
+  let match: RegExpExecArray | null;
+
+  // Try object pattern first (more reliable for complete objects)
+  while ((match = objectPattern.exec(text)) !== null) {
+    const query = match[1]
+      .replace(/\\"/g, '"')  // Unescape quotes
+      .replace(/\\n/g, ' ')  // Replace newlines with spaces
+      .trim();
+    const reasoning = match[2]
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, ' ')
+      .trim();
+
+    if (query && reasoning) {
+      const normalizedQuery = query.toLowerCase();
+      if (!seenQueries.has(normalizedQuery)) {
+        seenQueries.add(normalizedQuery);
+        queries.push({ query, reasoning });
+      }
+    }
+  }
+
+  // If we got results, return them
+  if (queries.length > 0) {
+    console.log(`Regex extraction recovered ${queries.length} queries`);
+    return queries;
+  }
+
+  // Try alternative simpler extraction: split by }, {
+  const blocks = text.split(/\},?\s*\{/);
+  for (const block of blocks) {
+    const queryMatch = block.match(/"query"\s*:\s*"([^}]+?)(?:",|"\s*,)/);
+    const reasoningMatch = block.match(/"reasoning"\s*:\s*"([^}]+?)(?:"|"\s*})/);
+
+    if (queryMatch && reasoningMatch) {
+      const query = queryMatch[1].replace(/\\"/g, '"').trim();
+      const reasoning = reasoningMatch[1].replace(/\\"/g, '"').trim();
+
+      if (query && reasoning) {
+        const normalizedQuery = query.toLowerCase();
+        if (!seenQueries.has(normalizedQuery)) {
+          seenQueries.add(normalizedQuery);
+          queries.push({ query, reasoning });
+        }
+      }
+    }
+  }
+
+  console.log(`Fallback extraction recovered ${queries.length} queries`);
+  return queries;
+}
+
+/**
  * Parse generated queries from LLM response
  *
  * @param llmResponse - Raw LLM response string
@@ -209,8 +392,22 @@ export function parseGeneratedQueries(llmResponse: string): Array<{ query: strin
       jsonText = codeBlockMatch[1].trim();
     }
 
-    // Parse JSON
-    const parsed = JSON.parse(jsonText);
+    // First attempt: try direct parse
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      // Second attempt: try to fix malformed JSON with unescaped quotes
+      console.warn('Initial JSON parse failed, attempting to fix malformed quotes...');
+      const fixedJson = fixMalformedJsonQuotes(jsonText);
+      try {
+        parsed = JSON.parse(fixedJson);
+      } catch {
+        // Third attempt: extract queries using regex pattern matching
+        console.warn('Fixed JSON parse failed, falling back to regex extraction...');
+        return extractQueriesWithRegex(jsonText);
+      }
+    }
 
     // Validate it's an array
     if (!Array.isArray(parsed)) {

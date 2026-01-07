@@ -48,13 +48,16 @@ export interface PipelineState {
 
 /**
  * Valid state transitions
+ *
+ * Note: 'complete' is allowed from pass1, pass2, executing, and aggregating
+ * to handle early termination when no queries pass a threshold.
  */
 const TRANSITIONS: Record<PipelineStage, PipelineStage[]> = {
   idle: ['generating'],
-  generating: ['pass1', 'error'],
-  pass1: ['pass2', 'error'],
-  pass2: ['executing', 'error'],
-  executing: ['aggregating', 'error'],
+  generating: ['pass1', 'error', 'complete'], // complete if no queries generated
+  pass1: ['pass2', 'error', 'complete'], // complete if no queries pass Pass 1
+  pass2: ['executing', 'error', 'complete'], // complete if no queries pass Pass 2
+  executing: ['aggregating', 'error', 'complete'], // complete if execution finishes with no results
   aggregating: ['complete', 'generating', 'error'], // Can start next round or complete
   complete: ['generating', 'idle'], // Can start next round or reset
   error: ['idle', 'generating'], // Can retry or reset

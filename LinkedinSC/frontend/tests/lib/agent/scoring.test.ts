@@ -494,13 +494,31 @@ describe('parseGeneratedQueries', () => {
     expect(result[0].reasoning).toBe('Needs trimming');
   });
 
-  it('should return empty array on invalid JSON', () => {
+  it('should return empty array on invalid JSON with no recoverable queries', () => {
     const response = 'Not valid JSON';
 
     const result = parseGeneratedQueries(response);
 
     expect(result).toEqual([]);
-    expect(console.error).toHaveBeenCalled();
+    // Now uses fallback regex extraction with console.warn instead of error
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it('should recover queries from malformed JSON with unescaped quotes', () => {
+    // This tests the actual error case from production - LLM returns JSON with
+    // unescaped quotes inside string values like ("Chief Technology Officer")
+    const response = `[
+      {
+        "query": "site:linkedin.com/in/ (\\"CTO\\" OR \\"VP Engineering\\")",
+        "reasoning": "Targets technical leaders"
+      }
+    ]`;
+
+    const result = parseGeneratedQueries(response);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].query).toContain('CTO');
+    expect(result[0].reasoning).toBe('Targets technical leaders');
   });
 
   it('should return empty array if response is not an array', () => {

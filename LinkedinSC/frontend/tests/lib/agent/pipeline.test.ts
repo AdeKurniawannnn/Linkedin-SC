@@ -101,20 +101,8 @@ describe('pipeline state machine', () => {
         expect(canTransition('idle', 'complete')).toBe(false)
       })
 
-      it('generating -> complete (must go through pipeline)', () => {
-        expect(canTransition('generating', 'complete')).toBe(false)
-      })
-
-      it('executing -> complete (must go through aggregating)', () => {
-        expect(canTransition('executing', 'complete')).toBe(false)
-      })
-
       it('pass1 -> executing (must go through pass2)', () => {
         expect(canTransition('pass1', 'executing')).toBe(false)
-      })
-
-      it('pass2 -> complete (must go through executing and aggregating)', () => {
-        expect(canTransition('pass2', 'complete')).toBe(false)
       })
 
       it('idle -> pass1 (must start with generating)', () => {
@@ -123,6 +111,24 @@ describe('pipeline state machine', () => {
 
       it('complete -> pass2 (must restart from generating)', () => {
         expect(canTransition('complete', 'pass2')).toBe(false)
+      })
+    })
+
+    describe('early completion transitions (when no queries pass threshold)', () => {
+      it('generating -> complete (when no queries generated)', () => {
+        expect(canTransition('generating', 'complete')).toBe(true)
+      })
+
+      it('pass1 -> complete (when no queries pass Pass 1)', () => {
+        expect(canTransition('pass1', 'complete')).toBe(true)
+      })
+
+      it('pass2 -> complete (when no queries pass Pass 2)', () => {
+        expect(canTransition('pass2', 'complete')).toBe(true)
+      })
+
+      it('executing -> complete (when execution finishes)', () => {
+        expect(canTransition('executing', 'complete')).toBe(true)
       })
     })
   })
