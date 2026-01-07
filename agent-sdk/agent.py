@@ -1,8 +1,15 @@
 """LinkedIn Query Agent using Agno Framework.
 
-This module provides a LinkedIn query generation agent powered by GLM 4.7
+This module provides a LinkedIn query generation agent powered by GLM-4.7
 through the Agno framework. It generates optimized search query variants
 from natural language inputs for B2B lead generation.
+
+The agent uses GLM-4.7 via Z.ai's OpenAI-compatible API:
+- Default model: GLM-4.7
+- API endpoint: https://api.z.ai/api/coding/paas/v4
+- API key: ANTHROPIC_AUTH_TOKEN
+
+Get your API key at: https://docs.z.ai/
 
 Example:
     >>> from agent import QueryAgent
@@ -18,7 +25,6 @@ from typing import Dict, List, Literal, Optional, Union
 
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-from agno.os import AgentOS
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
@@ -91,8 +97,9 @@ class QueryResult(BaseModel):
 
 
 # Configuration defaults
-DEFAULT_MODEL = "glm-4.7"
-DEFAULT_BASE_URL = "https://api.z.ai/api/anthropic"
+# Use GLM-4.7 via Z.ai's OpenAI-compatible endpoint
+DEFAULT_MODEL = "GLM-4.7"
+DEFAULT_BASE_URL = "https://api.z.ai/api/coding/paas/v4"
 
 
 def create_model(
@@ -100,32 +107,32 @@ def create_model(
     base_url: Optional[str] = None,
     timeout: int = 120,
 ) -> OpenAIChat:
-    """Create OpenAIChat model configured for GLM 4.7 via Z.ai.
+    """Create OpenAIChat model configured for GLM-4.7 via Z.ai.
 
-    Uses OpenAIChat with custom base_url since Z.ai provides an
-    OpenAI-compatible API endpoint.
+    Uses Z.ai's OpenAI-compatible endpoint for GLM models.
 
     Args:
-        model: Model ID (default: glm-4.7 or GLM_MODEL env var)
-        base_url: API base URL (default: Z.ai endpoint or GLM_BASE_URL env var)
+        model: Model ID (default: GLM-4.7)
+        base_url: API base URL (default: https://api.z.ai/api/coding/paas/v4)
         timeout: Request timeout in seconds
 
     Returns:
         Configured OpenAIChat instance
 
     Raises:
-        ValueError: If ANTHROPIC_AUTH_TOKEN is not set
+        ValueError: If ANTHROPIC_AUTH_TOKEN is not configured
     """
     api_key = os.getenv("ANTHROPIC_AUTH_TOKEN")
     if not api_key:
         raise ValueError(
-            "ANTHROPIC_AUTH_TOKEN must be set. "
-            "Export it with: export ANTHROPIC_AUTH_TOKEN='your-token.suffix'"
+            "ANTHROPIC_AUTH_TOKEN must be set for Z.ai GLM models. "
+            "Get your key at https://docs.z.ai/ "
+            "Export with: export ANTHROPIC_AUTH_TOKEN='your-key'"
         )
 
     return OpenAIChat(
-        id=model or os.getenv("GLM_MODEL", DEFAULT_MODEL),
-        base_url=base_url or os.getenv("GLM_BASE_URL", DEFAULT_BASE_URL),
+        id=model or DEFAULT_MODEL,
+        base_url=base_url or DEFAULT_BASE_URL,
         api_key=api_key,
         timeout=timeout,
     )
@@ -147,15 +154,15 @@ def get_agent(
     recreating them unnecessarily (Agno best practice).
 
     Args:
-        model: Model ID (default from env or DEFAULT_MODEL)
-        base_url: API base URL (default from env or DEFAULT_BASE_URL)
+        model: Model ID (default: GLM-4.7)
+        base_url: API base URL (default: https://api.z.ai/api/coding/paas/v4)
         timeout: Request timeout in seconds (only used on first creation)
 
     Returns:
         Cached or newly created Agno Agent instance
     """
-    resolved_model = model or os.getenv("GLM_MODEL", DEFAULT_MODEL)
-    resolved_base_url = base_url or os.getenv("GLM_BASE_URL", DEFAULT_BASE_URL)
+    resolved_model = model or DEFAULT_MODEL
+    resolved_base_url = base_url or DEFAULT_BASE_URL
     cache_key = (resolved_model, resolved_base_url)
 
     if cache_key not in _agent_registry:
@@ -163,8 +170,6 @@ def get_agent(
             name="LinkedIn Query Generator",
             id=f"linkedin-query-agent-{hash(cache_key) % 10000}",
             model=create_model(model=resolved_model, base_url=resolved_base_url, timeout=timeout),
-            description="Generates optimized LinkedIn search query variants from natural language inputs",
-            output_schema=QueryResult,
             markdown=False,
         )
     return _agent_registry[cache_key]
@@ -208,12 +213,12 @@ class QueryAgent:
 
         Args:
             timeout: Timeout for API call in seconds (default: 120)
-            model: Model name (default: glm-4.7, or GLM_MODEL env var)
-            base_url: API base URL (default: Z.ai endpoint, or GLM_BASE_URL env var)
+            model: Model name (default: GLM-4.7)
+            base_url: API base URL (default: https://api.z.ai/api/coding/paas/v4)
         """
         self.timeout = timeout
-        self.model = model or os.getenv("GLM_MODEL", DEFAULT_MODEL)
-        self.base_url = base_url or os.getenv("GLM_BASE_URL", DEFAULT_BASE_URL)
+        self.model = model or DEFAULT_MODEL
+        self.base_url = base_url or DEFAULT_BASE_URL
 
         # Use memoized agent (avoids recreating agents in loops)
         self._agent = get_agent(model=model, base_url=base_url, timeout=timeout)
@@ -255,9 +260,6 @@ class QueryAgent:
         prompt = build_prompt(input_text, count=count, focus=focus)
 
         # Run agent (async)
-        # TODO: Document expected exceptions for callers. Currently all errors are
-        # converted to ValueError or re-raised as-is. Consider introducing typed
-        # exceptions (e.g., QueryTimeoutError, QueryAuthError) for better error handling.
         try:
             response = await self._agent.arun(prompt)
         except Exception as e:
@@ -271,7 +273,16 @@ class QueryAgent:
             raise
 
         # Parse result - handle both Pydantic model and dict responses
-        result = response.content
+        result = response.content if hasattr(response, 'content') else response
+
+        # Handle None response from API
+        if result is None:
+            raise ValueError(
+                "Agent returned None response. "
+                "This may indicate an API authentication issue or invalid endpoint. "
+                f"Check your ANTHROPIC_AUTH_TOKEN setting."
+            )
+
         if isinstance(result, QueryResult):
             queries = result.queries
         elif isinstance(result, dict):
@@ -280,10 +291,48 @@ class QueryAgent:
                     f"Agent response missing 'queries' field. Got: {list(result.keys())}"
                 )
             queries = result["queries"]
+        elif isinstance(result, str):
+            # Try to parse the string as JSON or extract JSON from it
+            import json
+            import re
+
+            # First, try direct JSON parse
+            try:
+                parsed = json.loads(result)
+                if isinstance(parsed, dict) and "queries" in parsed:
+                    queries = parsed["queries"]
+                elif isinstance(parsed, dict):
+                    raise ValueError(
+                        f"String response parsed as JSON but missing 'queries'. Got: {list(parsed.keys())}"
+                    )
+                else:
+                    raise ValueError(
+                        f"String response parsed as non-dict JSON: {type(parsed).__name__}"
+                    )
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', result, re.DOTALL)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group(1))
+                        if isinstance(parsed, dict) and "queries" in parsed:
+                            queries = parsed["queries"]
+                        else:
+                            raise ValueError(
+                                f"Extracted JSON missing 'queries' field. Got: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed).__name__}"
+                            )
+                    except json.JSONDecodeError as e:
+                        raise ValueError(
+                            f"String response is not valid JSON. Response preview: {result[:500]}"
+                        ) from e
+                else:
+                    raise ValueError(
+                        f"String response is not JSON and contains no JSON blocks. Response preview: {result[:500]}"
+                    )
         else:
             raise ValueError(
                 f"Unexpected agent response type: {type(result).__name__}. "
-                f"Expected QueryResult or dict."
+                f"Expected QueryResult, dict, or JSON string."
             )
 
         # Add metadata if debug mode
@@ -321,16 +370,14 @@ class QueryAgent:
         )
 
 
-# AgentOS server configuration (replaces FastAPI)
-# TODO: Make database path configurable via env var (e.g., QUERY_AGENT_DB_PATH).
-# Current hardcoded "tmp/query_agent.db" path may not exist and isn't absolute.
-# For production, use: Path(__file__).parent / "data" / "query_agent.db" or env var.
-def create_agent_os() -> AgentOS:
+# AgentOS server configuration
+def create_agent_os():
     """Create the AgentOS server instance.
 
     Returns:
         Configured AgentOS instance with the query agent
     """
+    from agno.os import AgentOS  # Lazy import to avoid startup overhead
     return AgentOS(
         id="linkedin-query-api",
         description="LinkedIn Query Generation API - Generates optimized search query variants",
@@ -339,10 +386,10 @@ def create_agent_os() -> AgentOS:
 
 
 # Lazy initialization for AgentOS (only created when needed)
-_agent_os: Optional[AgentOS] = None
+_agent_os: Optional[object] = None
 
 
-def get_agent_os() -> AgentOS:
+def get_agent_os():
     """Get or create the AgentOS instance."""
     global _agent_os
     if _agent_os is None:
@@ -351,21 +398,79 @@ def get_agent_os() -> AgentOS:
 
 
 # FastAPI app via AgentOS (lazy loaded)
+_app = None
+
+
 def get_app():
     """Get the FastAPI app from AgentOS."""
-    return get_agent_os().get_app()
+    global _app
+    if _app is None:
+        _app = get_agent_os().get_app()
+    return _app
 
 
 # For uvicorn: python -m uvicorn agent:app --reload
-# Initialize app immediately (required for uvicorn)
-app = get_app()
+# Use __getattr__ for lazy loading to avoid module-level side effects
+def __getattr__(name):
+    """Lazy load app only when accessed."""
+    if name == "app":
+        return get_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 if __name__ == "__main__":
-    """Run the AgentOS server.
+    """CLI for LinkedIn Query Agent.
 
-    Access configuration at: http://localhost:8000/config
-    API endpoints at: http://localhost:8000/agents/linkedin-query-agent/runs
+    Usage:
+        python agent.py "CEO Jakarta fintech"
+        python agent.py "CTO Singapore AI" --count 5 --focus seniority_focused
+        python agent.py --serve --port 8001
     """
-    agent_os = get_agent_os()
-    agent_os.serve(app="agent:app", port=8000, reload=True)
+    import argparse
+    import json
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="LinkedIn Query Agent - Generate optimized search queries",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python agent.py "CEO Jakarta fintech"
+  python agent.py "CTO Singapore AI" --count 5
+  python agent.py "VP Sales London SaaS" --focus seniority_focused
+  python agent.py --serve --port 8001
+        """,
+    )
+    parser.add_argument("query", nargs="?", help="Natural language query")
+    parser.add_argument("-c", "--count", type=int, default=3, help="Number of variants (1-30)")
+    parser.add_argument("-f", "--focus", choices=list(QueryAgent.VALID_FOCUS_TYPES), help="Focus type")
+    parser.add_argument("-d", "--debug", action="store_true", help="Include metadata")
+    parser.add_argument("-o", "--output", help="Output file (default: stdout)")
+    parser.add_argument("--serve", action="store_true", help="Run AgentOS server")
+    parser.add_argument("--port", type=int, default=8001, help="Server port")
+
+    args = parser.parse_args()
+
+    if args.serve:
+        print(f"Starting AgentOS server on port {args.port}...")
+        agent_os = get_agent_os()
+        agent_os.serve(app="agent:app", port=args.port, reload=True)
+    elif args.query:
+        agent = QueryAgent()
+        try:
+            result = agent.generate_variants_sync(
+                args.query, count=args.count, focus=args.focus, debug=args.debug
+            )
+            output = json.dumps(result.model_dump(), indent=2)
+            if args.output:
+                with open(args.output, "w") as f:
+                    f.write(output)
+                print(f"Saved to {args.output}", file=sys.stderr)
+            else:
+                print(output)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        parser.print_help()
+        sys.exit(1)

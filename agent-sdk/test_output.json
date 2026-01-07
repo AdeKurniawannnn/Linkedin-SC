@@ -1,33 +1,19 @@
 {
   "input": "CEO Jakarta fintech",
   "queries": {
-    "broad": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Jabodetabek OR Indonesia) (CEO OR \"Chief Executive Officer\" OR \"Managing Director\" OR Founder) (fintech OR \"financial technology\" OR payment OR lending OR \"digital banking\") -recruiter -hr -intern -student -consultant -freelance",
-      "site:linkedin.com/in (Jakarta OR \"DKI Jakarta\" OR Indonesia) (CEO OR \"Chief Executive Officer\" OR President OR \"Direktur Utama\") (fintech OR insurtech OR neobank OR \"wealth tech\") -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "narrow": [
-      "site:linkedin.com/in Jakarta CEO fintech -recruiter -hr -intern -student -consultant -freelance",
-      "site:linkedin.com/in \"Greater Jakarta\" \"Chief Executive Officer\" \"financial technology\" -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "balanced": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\") (CEO OR \"Managing Director\" OR Founder) (fintech OR payment OR \"digital banking\") -recruiter -hr -intern -student -consultant -freelance",
-      "site:linkedin.com/in (Jakarta OR Jabodetabek) (CEO OR \"Chief Executive Officer\" OR \"Direktur Utama\") (fintech OR \"financial technology\" OR lending) -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "industry_focused": [
-      "site:linkedin.com/in Jakarta (CEO OR Founder OR \"Managing Director\") (fintech OR \"financial technology\" OR payment OR lending OR \"digital banking\" OR insurtech OR \"wealth tech\" OR neobank OR \"blockchain finance\") -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "seniority_focused": [
-      "site:linkedin.com/in Jakarta (CEO OR \"Chief Executive Officer\" OR \"Managing Director\" OR Founder OR \"Co-founder\" OR President OR \"Country Head\" OR \"Direktur Utama\" OR \"Komisaris Utama\" OR \"Board Director\") fintech -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "location_focused": [
-      "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Jabodetabek OR \"DKI Jakarta\" OR Tangerang OR Bekasi OR Depok OR Bogor) (CEO OR Founder) fintech -recruiter -hr -intern -student -consultant -freelance"
-    ],
-    "decision_maker": [
-      "site:linkedin.com/in Jakarta (CEO OR Founder OR \"Co-founder\" OR \"Board Member\" OR \"Country Manager\" OR \"General Manager\" OR \"Regional Director\") fintech -recruiter -hr -intern -student -consultant -freelance"
-    ]
+    "broad": "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Indonesia) (CEO OR \"Chief Executive Officer\" OR \"Managing Director\") (fintech OR \"financial technology\" OR payment) -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "narrow": "site:linkedin.com/in Jakarta CEO fintech -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "balanced": "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\") (CEO OR \"Chief Executive Officer\" OR Founder) (fintech OR \"financial technology\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "industry_focused": "site:linkedin.com/in Jakarta (CEO OR Founder OR \"Managing Director\") (fintech OR \"financial technology\" OR payment OR lending OR \"digital banking\" OR insurtech OR neobank OR \"paytech\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "seniority_focused": "site:linkedin.com/in Jakarta (CEO OR \"Chief Executive Officer\" OR \"Managing Director\" OR Founder OR \"Co-founder\" OR President OR \"Direktur Utama\") fintech -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "location_focused": "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Jabodetabek OR \"DKI Jakarta\" OR Tangerang OR Bekasi OR Depok OR Bogor) (CEO OR Founder) fintech -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "ultra_broad": "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR Indonesia OR \"West Java\") (CEO OR \"Chief Executive Officer\" OR \"Managing Director\" OR Founder OR \"Co-founder\" OR President OR \"Direktur Utama\") (fintech OR \"financial technology\" OR payment OR lending OR \"digital banking\" OR insurtech OR neobank) -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "ultra_narrow": "site:linkedin.com/in \"DKI Jakarta\" \"Chief Executive Officer\" \"financial technology\" -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "decision_maker": "site:linkedin.com/in Jakarta (CEO OR Founder OR \"Co-founder\" OR \"Board Member\" OR \"Country Manager\" OR \"General Manager\" OR \"President Director\") fintech -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance",
+    "emerging_market": "site:linkedin.com/in Jakarta (CEO OR \"Direktur Utama\" OR \"Presiden Direktur\" OR \"Komisaris\" OR Founder) (fintech OR \"financial technology\" OR \"tekfin\" OR payment OR \"uang elektronik\") -recruiter -hr -\"human resources\" -intern -student -graduate -trainer -consultant -freelance"
   },
   "meta": {
-    "timestamp": "2026-01-06T01:18:23.304615",
-    "model": "glm-4.7"
+    "timestamp": "2026-01-08T01:19:07.270646",
+    "model": "GLM-4.7"
   }
 }
