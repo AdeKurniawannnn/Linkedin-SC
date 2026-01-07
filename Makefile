@@ -39,7 +39,7 @@ help:
 	@echo "$(BRIGHT_CYAN)Available commands:$(RESET)"
 	@echo ""
 	@echo "$(BOLD)Development:$(RESET)"
-	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run all services (LinkedinSC + agent-sdk + Convex)"
+	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run frontend + backend + Convex (all 3)"
 	@echo "  $(BRIGHT_MAGENTA)make dev-frontend$(RESET)    - Run frontend only (port 3000)"
 	@echo "  $(BRIGHT_BLUE)make dev-backend$(RESET)     - Run backend only (port 8000)"
 	@echo "  $(BRIGHT_CYAN)make dev-convex$(RESET)      - Run Convex dev server only"
@@ -84,11 +84,11 @@ help:
 	@echo "  $(DIM)make agent-sdk-install$(RESET) - Install agent-sdk dependencies"
 	@echo "  $(DIM)make agent-sdk-clean$(RESET)  - Stop agent-sdk services"
 
-# Run all 5 services (clean first to avoid port conflicts)
+# Run all 3 services (clean first to avoid port conflicts)
 dev: clean
-	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting all services: LinkedinSC ($(BRIGHT_BLUE):8000$(RESET), $(BRIGHT_MAGENTA):3000$(RESET)), agent-sdk ($(BRIGHT_BLUE):8001$(RESET), $(BRIGHT_MAGENTA):3001$(RESET)), $(BRIGHT_CYAN)Convex$(RESET)$(BOLD)...$(RESET)"
+	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting backend on $(BRIGHT_BLUE):8000$(RESET), frontend on $(BRIGHT_MAGENTA):3000$(RESET), and $(BRIGHT_CYAN)Convex$(RESET)$(BOLD)...$(RESET)"
 	@rm -f "$(ROOT_DIR)/LinkedinSC/frontend/.next/dev/lock" 2>/dev/null || true
-	@make -j5 backend frontend dev-convex agent-sdk-backend agent-sdk-frontend
+	@make -j3 backend frontend dev-convex
 
 # Backend (LinkedinSC)
 backend:
@@ -131,34 +131,13 @@ convex-dashboard:
 	@echo "$(BRIGHT_CYAN)→$(RESET) Opening Convex dashboard..."
 	@open http://127.0.0.1:6790 2>/dev/null || xdg-open http://127.0.0.1:6790 2>/dev/null || echo "Visit: http://127.0.0.1:6790"
 
-# Install all dependencies (respects SKIP_*_NPM env vars from setup script)
+# Install all dependencies
 install:
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) $(BOLD)Installing dependencies...$(RESET)"
-	@# Create backend venv if missing
-	@if [ ! -d "$(ROOT_DIR)/LinkedinSC/backend/.venv" ]; then \
-		echo "$(BRIGHT_BLUE)→$(RESET) Creating backend venv..."; \
-		cd "$(ROOT_DIR)/LinkedinSC/backend" && uv venv .venv; \
-	fi
-	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)Python dependencies...$(RESET)"
-	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && uv pip install -r requirements.txt
-	@echo "$(BRIGHT_BLUE)→ SERP Aggregator$(RESET) $(DIM)dependencies...$(RESET)"
-	cd "$(ROOT_DIR)/serp-api-aggregator" && uv pip install -e ".[all]" 2>/dev/null || true
-	@# Conditional frontend npm install
-	@if [ -z "$$SKIP_FRONTEND_NPM" ]; then \
-		echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)npm dependencies...$(RESET)"; \
-		cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm install; \
-	else \
-		echo "$(DIM)→ Skipping frontend npm install (up to date)$(RESET)"; \
-	fi
-	@# Conditional agent-sdk frontend npm install
-	@if [ -d "$(ROOT_DIR)/agent-sdk/frontend" ]; then \
-		if [ -z "$$SKIP_AGENT_SDK_NPM" ]; then \
-			echo "$(BRIGHT_MAGENTA)→ Agent SDK Frontend$(RESET) $(DIM)npm dependencies...$(RESET)"; \
-			cd "$(ROOT_DIR)/agent-sdk/frontend" && npm install; \
-		else \
-			echo "$(DIM)→ Skipping agent-sdk frontend npm install (up to date)$(RESET)"; \
-		fi \
-	fi
+	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/serp-api-aggregator" && uv pip install -e ".[all]"
+	@echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm install
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Installation complete$(RESET)"
 
 # Stop services (kill processes on ports)
@@ -166,8 +145,6 @@ clean:
 	@echo "$(BOLD)$(RED)→$(RESET) $(BOLD)Stopping services...$(RESET)"
 	-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 	-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-	-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
-	-lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Services stopped$(RESET)"
 
 # ============================================================================
@@ -308,11 +285,11 @@ agent-sdk: agent-sdk-clean
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) $(BOLD)Starting agent-sdk backend on $(BRIGHT_BLUE):8001$(RESET), frontend on $(BRIGHT_MAGENTA):3001$(RESET)$(BOLD)...$(RESET)"
 	@make -j2 agent-sdk-backend agent-sdk-frontend
 
-# Agent SDK Backend (Agno Framework)
+# Agent SDK Backend (FastAPI)
 agent-sdk-backend:
 	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ AGENT-SDK BACKEND$(RESET) $(DIM)($(BRIGHT_BLUE)port 8001$(RESET)$(DIM))$(RESET)"
-	@echo "$(BRIGHT_BLUE)→$(RESET) Starting Agno Query Agent API..."
-	cd "$(ROOT_DIR)/agent-sdk" && set -a && . "$(ROOT_DIR)/.env" && set +a && uv run python agent.py
+	@echo "$(BRIGHT_BLUE)→$(RESET) Starting GLM Query API server..."
+	cd "$(ROOT_DIR)/agent-sdk" && source .venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
 
 # Agent SDK Frontend (Next.js)
 agent-sdk-frontend:
@@ -323,8 +300,8 @@ agent-sdk-frontend:
 # Install agent-sdk dependencies
 agent-sdk-install:
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) Installing agent-sdk dependencies..."
-	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)(Agno framework)...$(RESET)"
-	cd "$(ROOT_DIR)/agent-sdk" && uv venv .venv && source .venv/bin/activate && uv pip install agno python-dotenv pydantic
+	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/agent-sdk" && uv venv .venv && source .venv/bin/activate && uv pip install -r api/requirements.txt
 	@echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)dependencies...$(RESET)"
 	cd "$(ROOT_DIR)/agent-sdk/frontend" && npm install
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Agent-SDK installation complete$(RESET)"
