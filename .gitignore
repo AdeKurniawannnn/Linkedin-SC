@@ -38,3 +38,6 @@ logs/
 
 # Gemini
 .gemini/
+
+# Archive
+.archive/
