@@ -17,7 +17,6 @@ from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union
 
 from agno.agent import Agent
-from agno.db.sqlite import SqliteDb
 from agno.models.openai import OpenAIChat
 from agno.os import AgentOS
 from dotenv import load_dotenv
@@ -336,7 +335,6 @@ def create_agent_os() -> AgentOS:
         id="linkedin-query-api",
         description="LinkedIn Query Generation API - Generates optimized search query variants",
         agents=[get_agent()],  # Uses default model/base_url from env
-        db=SqliteDb(db_file="tmp/query_agent.db"),
     )
 
 
@@ -359,14 +357,8 @@ def get_app():
 
 
 # For uvicorn: python -m uvicorn agent:app --reload
-app = None  # Will be initialized on first access
-
-
-def __getattr__(name):
-    """Lazy load the app when accessed."""
-    if name == "app":
-        return get_app()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+# Initialize app immediately (required for uvicorn)
+app = get_app()
 
 
 if __name__ == "__main__":
