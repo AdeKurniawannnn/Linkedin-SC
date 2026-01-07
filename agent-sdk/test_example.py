@@ -1,33 +1,39 @@
-"""Test example for GLM Query Agent SDK.
+"""Test example for LinkedIn Query Agent (Agno).
 
-This script demonstrates how to use the GLM Query Agent with the Claude Agent SDK.
+This script demonstrates how to use the Query Agent with the Agno framework.
 It generates LinkedIn query variants and saves them to a JSON file.
+
+TODO: Add proper unit tests for Agno integration. This is currently an integration
+test script. Consider adding pytest tests in a tests/ directory covering:
+- QueryResult Pydantic validation
+- Agent memoization behavior
+- Error handling paths
+- Focus type validation
 """
 
 import asyncio
 import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 # Add current directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agent import GLMQueryAgent
+from agent import QueryAgent
 
 
 async def main():
     """Run the test example."""
-    print("GLM Query Agent SDK Test (v2.0)")
+    print("LinkedIn Query Agent Test (v3.0 - Agno)")
     print("=" * 50)
 
     # Initialize agent with 180s timeout
-    agent = GLMQueryAgent(timeout=180)
+    agent = QueryAgent(timeout=180)
 
     # Test input
     test_input = "CEO Jakarta fintech"
     count = 10
-    focus = None  # or "seniority", "industry", etc.
+    focus = None  # or "seniority_focused", "industry_focused", etc.
     debug = True
 
     print(f"\nInput: {test_input}")
@@ -39,7 +45,7 @@ async def main():
     print("\nGenerating query variants...\n")
 
     try:
-        # Generate variants with new API
+        # Generate variants with Agno
         result = await agent.generate_variants(
             test_input,
             count=count,
@@ -66,8 +72,8 @@ async def main():
             print(f"Meta: {result.meta}")
             print()
 
-        # Prepare output (convert dataclass to dict)
-        output = asdict(result)
+        # Prepare output (Pydantic model_dump)
+        output = result.model_dump()
 
         # Save to file
         output_file = Path(__file__).parent / "test_output.json"
@@ -79,26 +85,10 @@ async def main():
 
     except Exception as e:
         print(f"Error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
-def run_ignoring_cleanup_errors(coro):
-    """Run async coroutine, ignoring SDK cleanup errors."""
-    import warnings
-    warnings.filterwarnings("ignore", message=".*coroutine.*was never awaited.*")
-    warnings.filterwarnings("ignore", message=".*Enable tracemalloc.*")
-
-    loop = asyncio.new_event_loop()
-    loop.set_exception_handler(lambda l, c: None)  # Suppress all async errors during cleanup
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        # Suppress pending task warnings during shutdown
-        pending = asyncio.all_tasks(loop)
-        for task in pending:
-            task.cancel()
-        loop.close()
-
-
 if __name__ == "__main__":
-    run_ignoring_cleanup_errors(main())
+    asyncio.run(main())
