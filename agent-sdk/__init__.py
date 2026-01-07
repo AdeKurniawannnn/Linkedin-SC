@@ -19,6 +19,28 @@ from .agent import (
     get_app,
 )
 
+
+# Backward compatibility exception classes
+class GLMQueryError(Exception):
+    """Base exception for GLM query errors."""
+    pass
+
+
+class GLMTimeoutError(GLMQueryError):
+    """Raised when GLM query times out."""
+    pass
+
+
+class GLMValidationError(GLMQueryError):
+    """Raised when GLM query validation fails."""
+    pass
+
+
+class GLMAuthError(GLMQueryError):
+    """Raised when GLM authentication fails."""
+    pass
+
+
 # Backward compatibility aliases
 GLMQueryAgent = QueryAgent
 
@@ -31,4 +53,8 @@ __all__ = [
     "get_app",
     # Backward compatibility
     "GLMQueryAgent",
+    "GLMQueryError",
+    "GLMTimeoutError",
+    "GLMValidationError",
+    "GLMAuthError",
 ]

@@ -287,11 +287,11 @@ agent-sdk: agent-sdk-clean
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) $(BOLD)Starting agent-sdk backend on $(BRIGHT_BLUE):8001$(RESET), frontend on $(BRIGHT_MAGENTA):3001$(RESET)$(BOLD)...$(RESET)"
 	@make -j2 agent-sdk-backend agent-sdk-frontend
 
-# Agent SDK Backend (FastAPI)
+# Agent SDK Backend (Agno Framework)
 agent-sdk-backend:
 	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ AGENT-SDK BACKEND$(RESET) $(DIM)($(BRIGHT_BLUE)port 8001$(RESET)$(DIM))$(RESET)"
-	@echo "$(BRIGHT_BLUE)→$(RESET) Starting GLM Query API server..."
-	cd "$(ROOT_DIR)/agent-sdk" && source .venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
+	@echo "$(BRIGHT_BLUE)→$(RESET) Starting Agno Query Agent API..."
+	cd "$(ROOT_DIR)/agent-sdk" && set -a && . "$(ROOT_DIR)/.env" && set +a && uv run python agent.py
 
 # Agent SDK Frontend (Next.js)
 agent-sdk-frontend:
@@ -302,8 +302,8 @@ agent-sdk-frontend:
 # Install agent-sdk dependencies
 agent-sdk-install:
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) Installing agent-sdk dependencies..."
-	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)dependencies...$(RESET)"
-	cd "$(ROOT_DIR)/agent-sdk" && uv venv .venv && source .venv/bin/activate && uv pip install -r api/requirements.txt
+	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)(Agno framework)...$(RESET)"
+	cd "$(ROOT_DIR)/agent-sdk" && uv venv .venv && source .venv/bin/activate && uv pip install agno python-dotenv pydantic
 	@echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)dependencies...$(RESET)"
 	cd "$(ROOT_DIR)/agent-sdk/frontend" && npm install
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Agent-SDK installation complete$(RESET)"
