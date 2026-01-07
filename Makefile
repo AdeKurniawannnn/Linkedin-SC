@@ -39,7 +39,7 @@ help:
 	@echo "$(BRIGHT_CYAN)Available commands:$(RESET)"
 	@echo ""
 	@echo "$(BOLD)Development:$(RESET)"
-	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run frontend + backend + Convex (all 3)"
+	@echo "  $(BRIGHT_GREEN)make dev$(RESET)             - Run all services (LinkedinSC + agent-sdk + Convex)"
 	@echo "  $(BRIGHT_MAGENTA)make dev-frontend$(RESET)    - Run frontend only (port 3000)"
 	@echo "  $(BRIGHT_BLUE)make dev-backend$(RESET)     - Run backend only (port 8000)"
 	@echo "  $(BRIGHT_CYAN)make dev-convex$(RESET)      - Run Convex dev server only"
@@ -84,11 +84,11 @@ help:
 	@echo "  $(DIM)make agent-sdk-install$(RESET) - Install agent-sdk dependencies"
 	@echo "  $(DIM)make agent-sdk-clean$(RESET)  - Stop agent-sdk services"
 
-# Run all 3 services (clean first to avoid port conflicts)
+# Run all 5 services (clean first to avoid port conflicts)
 dev: clean
-	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting backend on $(BRIGHT_BLUE):8000$(RESET), frontend on $(BRIGHT_MAGENTA):3000$(RESET), and $(BRIGHT_CYAN)Convex$(RESET)$(BOLD)...$(RESET)"
+	@echo "$(BOLD)$(BRIGHT_GREEN)→$(RESET) $(BOLD)Starting all services: LinkedinSC ($(BRIGHT_BLUE):8000$(RESET), $(BRIGHT_MAGENTA):3000$(RESET)), agent-sdk ($(BRIGHT_BLUE):8001$(RESET), $(BRIGHT_MAGENTA):3001$(RESET)), $(BRIGHT_CYAN)Convex$(RESET)$(BOLD)...$(RESET)"
 	@rm -f "$(ROOT_DIR)/LinkedinSC/frontend/.next/dev/lock" 2>/dev/null || true
-	@make -j3 backend frontend dev-convex
+	@make -j5 backend frontend dev-convex agent-sdk-backend agent-sdk-frontend
 
 # Backend (LinkedinSC)
 backend:
@@ -145,6 +145,8 @@ clean:
 	@echo "$(BOLD)$(RED)→$(RESET) $(BOLD)Stopping services...$(RESET)"
 	-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 	-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+	-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
+	-lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Services stopped$(RESET)"
 
 # ============================================================================
