@@ -1,8 +1,9 @@
 {
     "scripts": {
-        "setup": "make install && [ -f \"$CONDUCTOR_ROOT_PATH/LinkedinSC/backend/.env\" ] && ln -sf \"$CONDUCTOR_ROOT_PATH/LinkedinSC/backend/.env\" LinkedinSC/backend/.env; [ -f \"$CONDUCTOR_ROOT_PATH/LinkedinSC/frontend/.env.local\" ] && ln -sf \"$CONDUCTOR_ROOT_PATH/LinkedinSC/frontend/.env.local\" LinkedinSC/frontend/.env.local || true",
+        "setup": "$CONDUCTOR_ROOT_PATH/setup-workspace.sh && make install",
         "run": "make dev",
-        "archive": "make clean; rm -rf LinkedinSC/frontend/.next LinkedinSC/backend/__pycache__ 2>/dev/null || true"
+        "archive": "make clean; rm -rf LinkedinSC/frontend/.next LinkedinSC/backend/__pycache__ 2>/dev/null || true",
+        "sync-env": "$CONDUCTOR_ROOT_PATH/sync-env.sh"
     },
     "runScriptMode": "nonconcurrent"
 }
