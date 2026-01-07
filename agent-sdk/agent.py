@@ -60,7 +60,18 @@ class GLMQueryAgent:
     DEFAULT_MODEL = "glm-4.7"
     DEFAULT_BASE_URL = "https://api.z.ai/api/anthropic"
 
-    VALID_FOCUS_TYPES = {"broad", "narrow", "balanced", "industry_focused", "seniority_focused"}
+    VALID_FOCUS_TYPES = {
+        "broad",
+        "narrow",
+        "balanced",
+        "industry_focused",
+        "seniority_focused",
+        "location_focused",
+        "ultra_broad",
+        "ultra_narrow",
+        "decision_maker",
+        "emerging_market"
+    }
 
     def __init__(
         self,
@@ -121,8 +132,8 @@ class GLMQueryAgent:
 
         Args:
             input_text: Natural language input (e.g., "CEO Jakarta fintech")
-            count: Number of query variants to generate (1-5, default: 3)
-            focus: Optional focus type (broad, narrow, balanced, industry_focused, seniority_focused)
+            count: Number of query variants to generate (1-30, default: 3)
+            focus: Optional focus type (broad, narrow, balanced, industry_focused, seniority_focused, location_focused, ultra_broad, ultra_narrow, decision_maker, emerging_market)
             debug: If True, include metadata (timestamp, model) in output
 
         Returns:
@@ -231,7 +242,7 @@ class GLMQueryAgent:
 
         Args:
             input_text: Natural language input
-            count: Number of query variants to generate (1-5, default: 3)
+            count: Number of query variants to generate (1-30, default: 3)
             focus: Optional focus type
             debug: If True, include metadata in output
 
