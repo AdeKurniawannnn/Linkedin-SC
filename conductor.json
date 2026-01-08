@@ -2,11 +2,7 @@
     "scripts": {
         "setup": "$CONDUCTOR_ROOT_PATH/setup-workspace.sh && make install",
         "run": "make dev",
-        "archive": "make clean; rm -rf LinkedinSC/frontend/.next LinkedinSC/backend/__pycache__ agent-sdk/frontend/.next 2>/dev/null || true",
-        "sync-env": "$CONDUCTOR_ROOT_PATH/sync-env.sh",
-        "test": "make test",
-        "lint": "cd LinkedinSC/frontend && npm run lint",
-        "health": "$CONDUCTOR_ROOT_PATH/health-check.sh"
+        "archive": "make clean; rm -rf LinkedinSC/frontend/.next LinkedinSC/backend/__pycache__ agent-sdk/frontend/.next 2>/dev/null || true"
     },
     "runScriptMode": "nonconcurrent"
 }
