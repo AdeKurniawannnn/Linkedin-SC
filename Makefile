@@ -131,13 +131,34 @@ convex-dashboard:
 	@echo "$(BRIGHT_CYAN)→$(RESET) Opening Convex dashboard..."
 	@open http://127.0.0.1:6790 2>/dev/null || xdg-open http://127.0.0.1:6790 2>/dev/null || echo "Visit: http://127.0.0.1:6790"
 
-# Install all dependencies
+# Install all dependencies (respects SKIP_*_NPM env vars from setup script)
 install:
 	@echo "$(BOLD)$(BRIGHT_YELLOW)→$(RESET) $(BOLD)Installing dependencies...$(RESET)"
-	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)dependencies...$(RESET)"
-	cd "$(ROOT_DIR)/serp-api-aggregator" && uv pip install -e ".[all]"
-	@echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)dependencies...$(RESET)"
-	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm install
+	@# Create backend venv if missing
+	@if [ ! -d "$(ROOT_DIR)/LinkedinSC/backend/.venv" ]; then \
+		echo "$(BRIGHT_BLUE)→$(RESET) Creating backend venv..."; \
+		cd "$(ROOT_DIR)/LinkedinSC/backend" && uv venv .venv; \
+	fi
+	@echo "$(BRIGHT_BLUE)→ Backend$(RESET) $(DIM)Python dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && uv pip install -r requirements.txt
+	@echo "$(BRIGHT_BLUE)→ SERP Aggregator$(RESET) $(DIM)dependencies...$(RESET)"
+	cd "$(ROOT_DIR)/serp-api-aggregator" && uv pip install -e ".[all]" 2>/dev/null || true
+	@# Conditional frontend npm install
+	@if [ -z "$$SKIP_FRONTEND_NPM" ]; then \
+		echo "$(BRIGHT_MAGENTA)→ Frontend$(RESET) $(DIM)npm dependencies...$(RESET)"; \
+		cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm install; \
+	else \
+		echo "$(DIM)→ Skipping frontend npm install (up to date)$(RESET)"; \
+	fi
+	@# Conditional agent-sdk frontend npm install
+	@if [ -d "$(ROOT_DIR)/agent-sdk/frontend" ]; then \
+		if [ -z "$$SKIP_AGENT_SDK_NPM" ]; then \
+			echo "$(BRIGHT_MAGENTA)→ Agent SDK Frontend$(RESET) $(DIM)npm dependencies...$(RESET)"; \
+			cd "$(ROOT_DIR)/agent-sdk/frontend" && npm install; \
+		else \
+			echo "$(DIM)→ Skipping agent-sdk frontend npm install (up to date)$(RESET)"; \
+		fi \
+	fi
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Installation complete$(RESET)"
 
 # Stop services (kill processes on ports)
