@@ -1,14 +1,18 @@
-"""LinkedIn Query Agent using Agno Framework.
+"""LinkedIn Query Generation SDK using Agno Framework.
 
-This package provides a LinkedIn query generation agent powered by GLM 4.7
-through the Agno framework.
+This package provides two approaches for generating LinkedIn search queries:
 
-Example:
-    >>> from agent_sdk import QueryAgent
-    >>> agent = QueryAgent()
-    >>> result = agent.generate_variants_sync("CEO Jakarta fintech")
-    >>> for query_type, query in result.queries.items():
-    ...     print(f"{query_type}: {query}")
+1. **Single Agent** (agent.py) - Simple, backward-compatible interface
+   >>> from agent_sdk import QueryAgent
+   >>> agent = QueryAgent()
+   >>> result = agent.generate_variants_sync("CEO Jakarta fintech", count=10)
+
+2. **Multi-Agent Team** (team.py) - Advanced iterative optimization
+   >>> from agent_sdk import QueryTeam
+   >>> team = QueryTeam()
+   >>> result = team.generate_sync("CEO Jakarta fintech", max_generations=3)
+
+Both use GLM-4.7 via Z.ai's OpenAI-compatible API.
 """
 
 from .agent import (
@@ -17,6 +21,17 @@ from .agent import (
     get_agent,
     get_agent_os,
     get_app,
+)
+
+from .team import QueryTeam, QueryGenerationResult
+
+from .schemas import (
+    GeneratedQueries,
+    ScoredQueries,
+    ScoredQuery,
+    QueryScore,
+    OptimizedQueries,
+    GenerationSummary,
 )
 
 
@@ -44,13 +59,24 @@ class GLMAuthError(GLMQueryError):
 # Backward compatibility aliases
 GLMQueryAgent = QueryAgent
 
-__version__ = "3.0.0"
+__version__ = "4.0.0"
 __all__ = [
+    # Single Agent (simple interface)
     "QueryAgent",
     "QueryResult",
     "get_agent",
     "get_agent_os",
     "get_app",
+    # Multi-Agent Team (advanced interface)
+    "QueryTeam",
+    "QueryGenerationResult",
+    # Schemas
+    "GeneratedQueries",
+    "ScoredQueries",
+    "ScoredQuery",
+    "QueryScore",
+    "OptimizedQueries",
+    "GenerationSummary",
     # Backward compatibility
     "GLMQueryAgent",
     "GLMQueryError",
