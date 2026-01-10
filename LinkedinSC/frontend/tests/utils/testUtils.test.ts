@@ -10,7 +10,6 @@ import {
   createMockUnifiedResult,
   createMockAggregatedResult,
   createMockRawSearchResponse,
-  createMockPipelineStats,
   createMockSearchHistoryBatch,
   createMockUnifiedResultBatch,
 } from './testUtils'
@@ -184,24 +183,6 @@ describe('Test Utilities - Mock Factories', () => {
 
       expect(response.success).toBe(false)
       expect(response.total_results).toBe(0)
-    })
-  })
-
-  describe('createMockPipelineStats', () => {
-    it('creates valid pipeline stats', () => {
-      const stats = createMockPipelineStats()
-
-      expect(stats).toMatchObject({
-        generated: expect.any(Number),
-        pass1Pending: expect.any(Number),
-        pass1Passed: expect.any(Number),
-        pass1Rejected: expect.any(Number),
-        pass2Pending: expect.any(Number),
-        pass2Passed: expect.any(Number),
-        pass2Rejected: expect.any(Number),
-        executing: expect.any(Number),
-        completed: expect.any(Number),
-      })
     })
   })
 

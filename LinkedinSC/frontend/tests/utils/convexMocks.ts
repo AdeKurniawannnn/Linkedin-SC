@@ -12,7 +12,8 @@ import { vi } from 'vitest'
  * Mock useQuery that supports skip option
  * Returns undefined by default (loading state)
  */
-export const mockUseQuery = vi.fn((query, args, options) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mockUseQuery: any = vi.fn((query, args, options) => {
   // If skip is true, return undefined immediately
   if (options?.skip) {
     return undefined
@@ -33,7 +34,8 @@ export const mockUseMutation = vi.fn(() => {
 /**
  * Mock useConvexAuth hook
  */
-export const mockUseConvexAuth = vi.fn(() => ({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mockUseConvexAuth: any = vi.fn(() => ({
   isLoading: false,
   isAuthenticated: false,
 }))
@@ -76,24 +78,6 @@ export const mockApi = {
     add: 'customPresets:add',
     update: 'customPresets:update',
     remove: 'customPresets:remove',
-  },
-  agentSessions: {
-    get: 'agentSessions:get',
-    list: 'agentSessions:list',
-    getActive: 'agentSessions:getActive',
-    create: 'agentSessions:create',
-    update: 'agentSessions:update',
-    updateStatus: 'agentSessions:updateStatus',
-    completeRound: 'agentSessions:completeRound',
-    remove: 'agentSessions:remove',
-  },
-  generatedQueries: {
-    getBySession: 'generatedQueries:getBySession',
-    addBatch: 'generatedQueries:addBatch',
-    updatePass1: 'generatedQueries:updatePass1',
-    updatePass2: 'generatedQueries:updatePass2',
-    updateExecution: 'generatedQueries:updateExecution',
-    deleteBatch: 'generatedQueries:deleteBatch',
   },
 }
 
@@ -210,7 +194,7 @@ export function setMockAuthLoading() {
  */
 export function wasQueryCalledWith(queryName: string, args?: any): boolean {
   return mockUseQuery.mock.calls.some(
-    (call) =>
+    (call: any[]) =>
       call[0] === queryName &&
       (args === undefined || JSON.stringify(call[1]) === JSON.stringify(args))
   )
@@ -253,7 +237,7 @@ export function setMockQuerySequence<T>(values: T[]) {
  * })
  */
 export function setMockQueryByName(queryMap: Record<string, any>) {
-  mockUseQuery.mockImplementation((queryName) => {
+  mockUseQuery.mockImplementation((queryName: string) => {
     return queryMap[queryName]
   })
 }

@@ -11,7 +11,6 @@ import type { SavedSearch, SavedSearchState } from '@/stores/savedSearchesStore'
 import type { CustomPreset } from '@/stores/customPresetsStore'
 import type { UnifiedResult, RawSearchResponse, AggregatedResult } from '@/lib/api'
 import type { PresetCategory } from '@/config/queryPresets'
-import type { PipelineStats } from '@/lib/agent/types'
 
 // ============ Mock Factory Types ============
 
@@ -210,28 +209,6 @@ export function createMockRawSearchResponse(
   }
 }
 
-/**
- * Create mock pipeline stats
- */
-export function createMockPipelineStats(overrides?: Partial<PipelineStats>): PipelineStats {
-  const defaultStats: PipelineStats = {
-    generated: 10,
-    pass1Pending: 2,
-    pass1Passed: 6,
-    pass1Rejected: 2,
-    pass2Pending: 3,
-    pass2Passed: 3,
-    pass2Rejected: 0,
-    executing: 1,
-    completed: 2,
-  }
-
-  return {
-    ...defaultStats,
-    ...overrides,
-  }
-}
-
 // ============ Store Reset Utilities ============
 
 /**
@@ -245,7 +222,6 @@ export function resetAllStores(): void {
     require('@/stores/customPresetsStore').useCustomPresetsStore,
     require('@/stores/resultsStore').useResultsStore,
     require('@/stores/queryBuilderStore').useQueryBuilderStore,
-    require('@/stores/agentSessionStore').useAgentSessionStore,
   ]
 
   stores.forEach((store) => {
@@ -261,7 +237,7 @@ export function resetAllStores(): void {
  * Wrapper component for testing components that use Convex
  * Provides mocked ConvexReactClient context
  */
-export function ConvexTestWrapper({ children }: { children: React.ReactNode }): JSX.Element {
+export function ConvexTestWrapper({ children }: { children: React.ReactNode }): React.ReactNode {
   // Mock ConvexProvider if needed
   // For now, just return children as-is since tests should mock useQuery/useMutation
   return <>{children}</>
@@ -321,5 +297,4 @@ export type {
   UnifiedResult,
   RawSearchResponse,
   AggregatedResult,
-  PipelineStats,
 }

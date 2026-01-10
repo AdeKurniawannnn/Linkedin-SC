@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { QueryPresets } from "@/components/query-builder/QueryPresets";
 import { UnifiedSearchForm } from "@/components/query-builder/UnifiedSearchForm";
 import { SavedSearchesList } from "@/components/query-builder/SavedSearchesList";
@@ -15,92 +14,20 @@ import {
   MobileTabs,
   EmptyState,
 } from "@/components/layout";
-import {
-  AgentModeToggle,
-  AgentConfigPanel,
-  AgentControls,
-  AgentProgressBar,
-  AgentPipelineView,
-  AgentQueryTable,
-  AgentRoundSummary,
-} from "@/components/agent";
 import { useResultsStore } from "@/stores/resultsStore";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
-import { useAgentSessionStore } from "@/stores/agentSessionStore";
-import { useConvexSearchHistory, useBuildQueryWithPresets, useAgentSession } from "@/hooks";
-import { useAgentPipeline } from "@/hooks/useAgentPipeline";
+import { useConvexSearchHistory, useBuildQueryWithPresets } from "@/hooks";
 import { type RawSearchResponse } from "@/lib/api";
-import type { AgentSessionConfig } from "@/lib/agent/types";
 import { toast } from "sonner";
 
 export default function Home() {
-  // Agent mode state
-  const [isAgentMode, setIsAgentMode] = useState(false);
-  const [agentConfig, setAgentConfig] = useState<AgentSessionConfig | null>(null);
-
   // Use persisted stores
   const { results, aggregatedMetadata, error, isLoading, appendResults, setError, clearResults } = useResultsStore();
   const { resetAll: resetQueryBuilder } = useQueryBuilderStore();
   const { addEntry: addHistoryEntry } = useConvexSearchHistory();
 
-  // Agent stores and hooks
-  const { currentStage, isRunning: isAgentRunning, isPaused, progress, pipelineStats } = useAgentSessionStore();
-
-  // Convex-backed agent session management
-  const agentSession = useAgentSession();
-
   // Get composed query including custom presets from Convex
   const composedQuery = useBuildQueryWithPresets();
-
-  // Initialize agent pipeline with Convex callbacks for persistence
-  const agentPipeline = useAgentPipeline({
-    sessionId: agentSession.activeSessionId || "temp-session",
-    config: agentConfig || {
-      persona: "",
-      seedQuery: "",
-      scoringMasterPrompt: "",
-      pass1Threshold: 70,
-      pass2Threshold: 65,
-      queryBudgetPerRound: 20,
-      concurrencyLimit: 3,
-      maxResultsPerQuery: 50,
-    },
-    // Wire up Convex callbacks for persistence
-    convex: agentSession.activeSessionId ? {
-      addQueryBatch: agentSession.addQueryBatch,
-      updatePass1: agentSession.updatePass1,
-      updatePass2: agentSession.updatePass2,
-      updateExecution: agentSession.updateExecution,
-      updateStatus: agentSession.updateStatus,
-      getTopQueriesForContext: () => {
-        return agentSession.getTopQueriesForContext(5).map(q => ({
-          query: q.query,
-          compositeScore: q.compositeScore,
-          pass1Score: q.pass1Score,
-          pass2Score: q.pass2Score,
-        }));
-      },
-    } : undefined,
-    onProgress: (progress) => {
-      // Progress is already tracked by the pipeline store
-    },
-    onStageComplete: (stage, stats) => {
-      toast.success(`${stage} stage completed`, {
-        description: `Stats: ${JSON.stringify(stats)}`,
-      });
-    },
-    onComplete: (totalResults) => {
-      toast.success("Agent pipeline completed", {
-        description: `Generated ${totalResults} total results`,
-      });
-    },
-    onError: (error) => {
-      setError(error);
-      toast.error("Agent pipeline error", {
-        description: error,
-      });
-    },
-  });
 
   const handleSearchComplete = (response: RawSearchResponse) => {
     // Get the query state for history capture
@@ -140,121 +67,29 @@ export default function Home() {
     resetQueryBuilder();
   };
 
-  // Agent handler functions
-  const handleAgentStart = async (config: AgentSessionConfig) => {
-    try {
-      // Create a new session in Convex
-      const sessionId = await agentSession.create(config);
-
-      // Store config for pipeline
-      setAgentConfig(config);
-
-      // Start the pipeline
-      await agentPipeline.start();
-    } catch (error) {
-      console.error("Failed to start agent:", error);
-      toast.error("Failed to start agent", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  const handlePause = () => {
-    agentPipeline.pause();
-    toast.info("Agent pipeline paused");
-  };
-
-  const handleResume = () => {
-    agentPipeline.resume();
-    toast.info("Agent pipeline resumed");
-  };
-
-  const handleStop = () => {
-    agentPipeline.stop();
-    toast.info("Agent pipeline stopped");
-  };
-
-  const handleGenerateMore = async () => {
-    try {
-      await agentPipeline.generateMore();
-    } catch (error) {
-      console.error("Failed to generate more queries:", error);
-      toast.error("Failed to generate more queries");
-    }
-  };
-
-  // Left panel content: Query building tools OR agent config
+  // Left panel content: Query building tools
   const leftPanelContent = (
     <div className="space-y-6">
-      {isAgentMode ? (
-        // Agent Mode: Show configuration panel
-        <AgentConfigPanel
-          onStart={handleAgentStart}
-          isRunning={isAgentRunning}
-        />
-      ) : (
-        // Normal Mode: Show search form and presets
-        <>
-          {/* Search Form - Primary action */}
-          <UnifiedSearchForm
-            onSearchComplete={handleSearchComplete}
-            onSearchError={handleSearchError}
-          />
+      {/* Search Form - Primary action */}
+      <UnifiedSearchForm
+        onSearchComplete={handleSearchComplete}
+        onSearchError={handleSearchError}
+      />
 
-          {/* Query Presets - Configuration before search */}
-          <QueryPresets />
+      {/* Query Presets - Configuration before search */}
+      <QueryPresets />
 
-          {/* Saved Searches - Quick recall for returning users */}
-          <SavedSearchesList />
-        </>
-      )}
+      {/* Saved Searches - Quick recall for returning users */}
+      <SavedSearchesList />
     </div>
   );
 
-  // Right panel content: Results and history (with optional agent views)
+  // Right panel content: Results and history
   const rightPanelContent = (
     <div className="space-y-6 h-full flex flex-col">
       {/* Results Section */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* Agent Mode: Pipeline Views */}
-        {isAgentMode && (
-          <div className="space-y-4 mb-6">
-            {/* Progress Bar for Agent */}
-            <AgentProgressBar stage={currentStage} progress={progress} />
-
-            {/* Pipeline Statistics */}
-            <AgentPipelineView
-              stats={pipelineStats}
-              currentStage={currentStage === 'idle' ? undefined : currentStage}
-            />
-
-            {/* Round Summary */}
-            {agentSession.session && (
-              <AgentRoundSummary
-                roundHistory={agentSession.session.roundHistory || []}
-                currentRound={agentSession.session.currentRound}
-              />
-            )}
-
-            {/* Query Table */}
-            <AgentQueryTable queries={agentSession.queries} />
-
-            {/* Agent Controls */}
-            <AgentControls
-              isRunning={isAgentRunning}
-              isPaused={isPaused}
-              currentStage={currentStage}
-              currentRound={agentSession.session?.currentRound || 0}
-              onPause={handlePause}
-              onResume={handleResume}
-              onStop={handleStop}
-              onGenerateMore={handleGenerateMore}
-            />
-          </div>
-        )}
-
-        {/* Normal Mode: Progress Bar */}
-        {!isAgentMode && <ProgressBar isLoading={isLoading} />}
+        <ProgressBar isLoading={isLoading} />
 
         {/* Error Message */}
         {error && (
@@ -272,8 +107,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Search History - Only show in normal mode, collapsible */}
-      {!isAgentMode && <SearchHistorySection autoCollapse={!!results} />}
+      {/* Search History - collapsible */}
+      <SearchHistorySection autoCollapse={!!results} />
     </div>
   );
 
@@ -283,16 +118,8 @@ export default function Home() {
       <PresetCommandPalette />
 
       <ErrorBoundary sessionStorageKey="query-builder-session">
-        {/* Header Bar with Agent Mode Toggle */}
-        <HeaderBar
-          onClear={handleClearAll}
-          agentModeToggle={
-            <AgentModeToggle
-              checked={isAgentMode}
-              onChange={setIsAgentMode}
-            />
-          }
-        />
+        {/* Header Bar */}
+        <HeaderBar onClear={handleClearAll} />
 
         {/* Desktop: Split Panel Layout (lg and up) */}
         <div className="hidden lg:flex flex-1 min-h-0 w-full">
