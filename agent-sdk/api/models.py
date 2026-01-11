@@ -1,5 +1,8 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Union, Optional
+"""API request/response models for query generation."""
+
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class GenerateRequest(BaseModel):
@@ -9,63 +12,29 @@ class GenerateRequest(BaseModel):
         ...,
         min_length=3,
         max_length=500,
-        description="Input text describing the target audience (3-500 characters)"
+        description="Input text describing the target audience (3-500 characters)",
     )
     count: int = Field(
-        default=3,
+        default=10,
         ge=1,
         le=30,
-        description="Number of query variants to generate (1-30)"
-    )
-    focus: Optional[str] = Field(
-        default=None,
-        description="Query focus type (broad, narrow, balanced, etc.)"
+        description="Number of query variants to generate (1-30)",
     )
     debug: bool = Field(
         default=False,
-        description="Enable debug mode for detailed output"
+        description="Enable debug mode for metadata output",
     )
-
-    @field_validator('focus')
-    @classmethod
-    def validate_focus(cls, v: Optional[str]) -> Optional[str]:
-        """Validate focus parameter."""
-        if v is None:
-            return v
-
-        valid_focus_types = {
-            'broad',
-            'narrow',
-            'balanced',
-            'industry_focused',
-            'seniority_focused',
-            'location_focused',
-            'ultra_broad',
-            'ultra_narrow',
-            'decision_maker',
-            'emerging_market'
-        }
-
-        if v not in valid_focus_types:
-            raise ValueError(
-                f"Invalid focus type. Must be one of: {', '.join(sorted(valid_focus_types))}"
-            )
-
-        return v
 
 
 class GenerateResponse(BaseModel):
     """Response model for query generation."""
 
-    input: str = Field(
+    input: str = Field(..., description="Original input text")
+    queries: List[str] = Field(
         ...,
-        description="Original input text"
+        description="Generated query variants as a list",
     )
-    queries: Dict[str, Union[str, List[str]]] = Field(
-        ...,
-        description="Generated query variants grouped by type"
-    )
-    meta: Optional[Dict] = Field(
+    meta: Optional[Dict[str, str]] = Field(
         default=None,
-        description="Optional metadata about the generation process"
+        description="Optional metadata about the generation process",
     )

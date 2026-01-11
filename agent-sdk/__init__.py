@@ -1,31 +1,48 @@
-"""GLM Query Agent using Claude Agent SDK.
+"""LinkedIn Query Generator using Agno Framework.
 
-This package provides a LinkedIn query generation agent powered by GLM 4.7
-through the Claude Agent SDK.
+Single-pass query generation with intelligent expansion.
 
 Example:
-    >>> from agent_sdk import GLMQueryAgent
-    >>> agent = GLMQueryAgent()
-    >>> result = agent.generate_variants_sync("CEO Jakarta fintech")
-    >>> for query_type, query in result.queries.items():
-    ...     print(f"{query_type}: {query}")
+    >>> from agent_sdk import QueryGenerator
+    >>> gen = QueryGenerator()
+    >>> result = gen.generate_sync("CEO Jakarta fintech", count=5)
+    >>> for query in result.queries:
+    ...     print(query)
 """
 
+from .generator import (
+    QueryGenerator,
+    QueryGeneratorError,
+    QueryAuthError,
+    QueryValidationError,
+    QueryTimeoutError,
+)
+from .simple_schemas import SimpleQueryResult
+
+# Backward compatibility (deprecated)
 from .agent import (
     GLMQueryAgent,
     GLMQueryError,
     GLMTimeoutError,
     GLMValidationError,
     GLMAuthError,
-    QueryResult
+    QueryResult,
 )
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 __all__ = [
+    # New API
+    "QueryGenerator",
+    "SimpleQueryResult",
+    "QueryGeneratorError",
+    "QueryAuthError",
+    "QueryValidationError",
+    "QueryTimeoutError",
+    # Deprecated (backward compat)
     "GLMQueryAgent",
     "GLMQueryError",
     "GLMTimeoutError",
     "GLMValidationError",
     "GLMAuthError",
-    "QueryResult"
+    "QueryResult",
 ]

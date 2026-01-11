@@ -29,7 +29,10 @@ except ImportError:
 try:
     from .prompts import build_prompt
 except ImportError:
-    from prompts import build_prompt
+    try:
+        from prompts import build_prompt
+    except ImportError:
+        from _deprecated.prompts import build_prompt
 
 
 class GLMQueryError(Exception):
