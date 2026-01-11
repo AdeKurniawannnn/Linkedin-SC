@@ -1,24 +1,30 @@
-"""GLM Query Agent using Claude Agent SDK."""
+"""GLM Query Agent using Agno Framework.
+
+This module provides a LinkedIn query generation agent powered by Agno framework
+with GLM 4.7 model via OpenRouter API.
+"""
 
 import asyncio
 import json
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from claude_agent_sdk import (
-    query,
-    ClaudeAgentOptions,
-    ResultMessage,
-    ClaudeSDKError,
-    ProcessError
-)
 
 # Load environment variables from .env file
 load_dotenv()
+
+try:
+    from agno.agent import Agent
+    from agno.models.openai import OpenAIChat
+except ImportError:
+    raise ImportError(
+        "Agno framework is required. Install with: pip install agno"
+    )
 
 try:
     from .prompts import build_prompt
@@ -55,7 +61,7 @@ class QueryResult:
 
 
 class GLMQueryAgent:
-    """Agent for generating LinkedIn query alternatives using GLM 4.7 via Claude Agent SDK."""
+    """Agent for generating LinkedIn query alternatives using GLM 4.7 via Agno Framework."""
 
     DEFAULT_MODEL = "glm-4.7"
     DEFAULT_BASE_URL = "https://api.z.ai/api/anthropic"
@@ -79,7 +85,7 @@ class GLMQueryAgent:
         model: Optional[str] = None,
         base_url: Optional[str] = None
     ):
-        """Initialize the GLM Query Agent.
+        """Initialize the GLM Query Agent with Agno Framework.
 
         Args:
             timeout: Timeout for GLM API call in seconds (default: 120)
@@ -90,6 +96,9 @@ class GLMQueryAgent:
         self.model = model or os.getenv("GLM_MODEL", self.DEFAULT_MODEL)
         self.base_url = base_url or os.getenv("GLM_BASE_URL", self.DEFAULT_BASE_URL)
         self.schema_path = Path(__file__).parent / "schemas" / "query_variants.json"
+        
+        self._agent = None
+        self._model = None
 
     def _setup_env(self) -> None:
         """Configure environment for GLM API.
@@ -102,7 +111,34 @@ class GLMQueryAgent:
                 "ANTHROPIC_AUTH_TOKEN must be set. "
                 "Export it with: export ANTHROPIC_AUTH_TOKEN='your-token.suffix'"
             )
-        os.environ["ANTHROPIC_BASE_URL"] = self.base_url
+
+    def _get_agent(self) -> Agent:
+        """Get or create the Agno Agent with GLM model.
+
+        Returns:
+            Configured Agno Agent instance
+        """
+        if self._agent is not None:
+            return self._agent
+
+        self._setup_env()
+
+        # Create OpenAI-compatible model pointing to GLM endpoint
+        self._model = OpenAIChat(
+            id=self.model,
+            api_key=os.environ.get("ANTHROPIC_AUTH_TOKEN"),
+            base_url=self.base_url,
+            timeout=self.timeout,
+        )
+
+        # Create agent with the model
+        self._agent = Agent(
+            model=self._model,
+            name="GLMQueryGenerator",
+            description="LinkedIn query generation agent powered by GLM 4.7",
+        )
+
+        return self._agent
 
     def _load_schema(self) -> dict:
         """Load JSON schema for structured output.
@@ -121,6 +157,51 @@ class GLMQueryAgent:
         with open(self.schema_path) as f:
             return json.load(f)
 
+    def _extract_json(self, text: str) -> dict:
+        """Extract JSON from agent response, handling markdown code blocks.
+
+        Args:
+            text: Raw response text from agent
+
+        Returns:
+            Parsed JSON as dictionary
+
+        Raises:
+            GLMValidationError: If JSON cannot be extracted
+        """
+        if not text:
+            raise GLMValidationError("Empty response from agent")
+
+        # Try direct JSON parse first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Try extracting from markdown code blocks
+        json_match = re.search(
+            r"```(?:json)?\s*(\{.*?\})\s*```",
+            text,
+            re.DOTALL
+        )
+        if json_match:
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Try finding JSON object in text
+        json_match = re.search(r"\{[\s\S]*\}", text)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        raise GLMValidationError(
+            f"Could not extract JSON from response: {text[:500]}"
+        )
+
     async def generate_variants(
         self,
         input_text: str,
@@ -133,7 +214,7 @@ class GLMQueryAgent:
         Args:
             input_text: Natural language input (e.g., "CEO Jakarta fintech")
             count: Number of query variants to generate (1-30, default: 3)
-            focus: Optional focus type (broad, narrow, balanced, industry_focused, seniority_focused, location_focused, ultra_broad, ultra_narrow, decision_maker, emerging_market)
+            focus: Optional focus type (broad, narrow, balanced, etc.)
             debug: If True, include metadata (timestamp, model) in output
 
         Returns:
@@ -153,83 +234,61 @@ class GLMQueryAgent:
             raise ValueError("Count must be between 1 and 30")
 
         if focus and focus not in self.VALID_FOCUS_TYPES:
-            raise ValueError(f"Focus must be one of: {', '.join(self.VALID_FOCUS_TYPES)}")
-
-        self._setup_env()
-        prompt = build_prompt(input_text, count=count, focus=focus)
-        schema = self._load_schema()
-
-        options = ClaudeAgentOptions(
-            model=self.model,
-            output_format={
-                "type": "json_schema",
-                "schema": schema
-            }
-        )
-
-        response = None
+            raise ValueError(
+                f"Focus must be one of: {', '.join(sorted(self.VALID_FOCUS_TYPES))}"
+            )
 
         try:
-            async for message in query(prompt=prompt, options=options):
-                if isinstance(message, ResultMessage):
-                    if message.is_error:
-                        raise GLMQueryError(f"Agent error: {message.result}")
-                    if hasattr(message, 'structured_output') and message.structured_output:
-                        response = message.structured_output
-                        break
+            agent = self._get_agent()
+            prompt = build_prompt(input_text, count=count, focus=focus)
 
-        except ProcessError as e:
+            # Run agent synchronously wrapped in async context
+            response = await asyncio.to_thread(agent.run, prompt)
+
+            # Extract response text
+            if hasattr(response, "content"):
+                response_text = response.content
+            elif hasattr(response, "message"):
+                response_text = response.message
+            else:
+                response_text = str(response)
+
+            # Parse JSON from response
+            data = self._extract_json(response_text)
+
+            # Validate response structure
+            if "queries" not in data:
+                raise GLMValidationError("Response missing 'queries' field")
+
+            queries = data.get("queries", {})
+            if not queries:
+                raise GLMValidationError("No queries generated")
+
+            # Build result
+            meta = None
+            if debug:
+                meta = {
+                    "timestamp": datetime.now().isoformat(),
+                    "model": self.model,
+                    "framework": "agno"
+                }
+
+            return QueryResult(
+                input=input_text,
+                queries=queries,
+                meta=meta
+            )
+
+        except asyncio.TimeoutError as e:
+            raise GLMTimeoutError(f"GLM API call timed out after {self.timeout}s") from e
+        except ValueError:
+            raise
+        except GLMValidationError:
+            raise
+        except Exception as e:
             if "401" in str(e) or "unauthorized" in str(e).lower():
-                raise GLMAuthError(f"Authentication failed: {e}")
-            raise GLMQueryError(f"SDK error: {e}")
-        except asyncio.TimeoutError:
-            raise GLMTimeoutError(f"GLM API call timed out after {self.timeout}s")
-        except ClaudeSDKError as e:
-            raise GLMQueryError(f"SDK error: {e}")
-
-        if not response:
-            raise GLMValidationError("No structured output received from agent")
-
-        return self._parse_response(input_text, response, debug)
-
-    def _parse_response(
-        self,
-        input_text: str,
-        response: Dict[str, Any],
-        debug: bool
-    ) -> QueryResult:
-        """Parse GLM response into QueryResult.
-
-        Args:
-            input_text: Original input text
-            response: Raw JSON response from GLM
-            debug: Whether to include metadata
-
-        Returns:
-            Parsed QueryResult
-
-        Raises:
-            GLMValidationError: If response structure is invalid
-        """
-        if "queries" not in response:
-            raise GLMValidationError("Response missing 'queries' field")
-
-        queries = response.get("queries", {})
-        if not queries:
-            raise GLMValidationError("No queries generated")
-
-        meta = None
-        if debug:
-            meta = {
-                "timestamp": datetime.now().isoformat(),
-                "model": self.model
-            }
-
-        return QueryResult(
-            input=input_text,
-            queries=queries,
-            meta=meta
-        )
+                raise GLMAuthError(f"Authentication failed: {e}") from e
+            raise GLMQueryError(f"Agent error: {e}") from e
 
     def generate_variants_sync(
         self,
