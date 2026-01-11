@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { QueryGeneratorForm, GenerateResponse } from "@/components/QueryGeneratorForm";
 import { QueryResultsDisplay } from "@/components/QueryResultsDisplay";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const [result, setResult] = useState<GenerateResponse | null>(null);
@@ -12,13 +13,16 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Query Generator
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Generate LinkedIn search query variants using GLM AI
-          </p>
+        <div className="max-w-4xl mx-auto px-4 py-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Query Generator
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Generate LinkedIn search query variants using GLM AI
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
