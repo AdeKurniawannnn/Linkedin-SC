@@ -10,13 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.models import GenerateRequest, GenerateResponse
+from api.models import GenerateRequest, GenerateResponse, ProviderEnum
 from generator import (
     QueryGenerator,
     QueryGeneratorError,
     QueryAuthError,
     QueryValidationError,
     QueryTimeoutError,
+    Provider,
 )
 
 # Load environment variables
@@ -26,7 +27,7 @@ load_dotenv()
 app = FastAPI(
     title="Query Generator API",
     description="API for generating LinkedIn search query variants",
-    version="3.0.0",
+    version="3.1.0",
 )
 
 # Configure CORS
@@ -38,14 +39,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize generator
-generator = QueryGenerator()
+# Cache generators by provider
+_generators: dict[Provider, QueryGenerator] = {}
+
+
+def get_generator(provider: ProviderEnum) -> QueryGenerator:
+    """Get or create generator for provider."""
+    p = Provider(provider.value)
+    if p not in _generators:
+        _generators[p] = QueryGenerator(provider=p)
+    return _generators[p]
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "3.0.0"}
+    return {"status": "ok", "version": "3.1.0", "providers": ["glm", "openrouter"]}
 
 
 @app.post("/generate", response_model=GenerateResponse)
@@ -53,7 +62,7 @@ async def generate_queries(request: GenerateRequest):
     """Generate search query variants.
 
     Args:
-        request: GenerateRequest with input_text, count, and debug options
+        request: GenerateRequest with input_text, count, provider, and debug options
 
     Returns:
         GenerateResponse with generated queries and metadata
@@ -62,6 +71,7 @@ async def generate_queries(request: GenerateRequest):
         HTTPException: 400 for validation errors, 401 for auth, 500 for other errors
     """
     try:
+        generator = get_generator(request.provider)
         result = await generator.generate(
             input_text=request.input_text,
             count=request.count,

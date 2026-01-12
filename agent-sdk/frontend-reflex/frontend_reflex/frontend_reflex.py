@@ -9,9 +9,15 @@ class State(rx.State):
     
     input_text: str = ""
     count: int = 5
+    provider: str = "glm"
     queries: list[str] = []
     loading: bool = False
     error: str = ""
+    model_info: str = ""
+    
+    def set_provider(self, value: str):
+        """Set the provider."""
+        self.provider = value
     
     @rx.event
     async def generate(self):
@@ -23,6 +29,7 @@ class State(rx.State):
         self.loading = True
         self.error = ""
         self.queries = []
+        self.model_info = ""
         yield
         
         try:
@@ -32,7 +39,8 @@ class State(rx.State):
                     json={
                         "input_text": self.input_text,
                         "count": self.count,
-                        "debug": False,
+                        "provider": self.provider,
+                        "debug": True,
                     },
                     timeout=120.0,
                 )
@@ -40,6 +48,9 @@ class State(rx.State):
                 if response.status_code == 200:
                     data = response.json()
                     self.queries = data.get("queries", [])
+                    meta = data.get("meta", {})
+                    if meta:
+                        self.model_info = f"{meta.get('provider', '')} / {meta.get('model', '')}"
                 else:
                     error_detail = response.json().get("detail", "Unknown error")
                     self.error = f"Error: {error_detail}"
@@ -110,7 +121,17 @@ def index() -> rx.Component:
                                 max=30,
                                 step=1,
                                 on_change=lambda v: State.set_count(v[0]),
-                                width="200px",
+                                width="150px",
+                            ),
+                            align="start",
+                        ),
+                        rx.vstack(
+                            rx.text("Provider", size="2"),
+                            rx.select(
+                                ["glm", "openrouter"],
+                                value=State.provider,
+                                on_change=State.set_provider,
+                                width="140px",
                             ),
                             align="start",
                         ),
@@ -130,7 +151,8 @@ def index() -> rx.Component:
                             size="3",
                         ),
                         width="100%",
-                        align="center",
+                        align="end",
+                        spacing="4",
                     ),
                     spacing="3",
                     width="100%",
@@ -161,7 +183,13 @@ def index() -> rx.Component:
                         rx.hstack(
                             rx.text("Generated Queries", weight="medium", size="2"),
                             rx.badge(State.queries.length(), variant="soft"),
+                            rx.spacer(),
+                            rx.cond(
+                                State.model_info != "",
+                                rx.text(State.model_info, size="1", color="gray"),
+                            ),
                             align="center",
+                            width="100%",
                         ),
                         rx.foreach(State.queries, query_card),
                         spacing="3",

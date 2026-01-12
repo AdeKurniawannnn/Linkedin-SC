@@ -7,7 +7,7 @@ import sys
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from generator import QueryGenerator, QueryValidationError
+from generator import QueryGenerator, QueryValidationError, Provider
 
 
 async def test_basic_generation():
@@ -82,14 +82,52 @@ def test_sync_wrapper():
     print(f"  Generated {len(result.queries)} queries synchronously: OK")
 
 
+async def test_openrouter_provider():
+    """Test OpenRouter provider with Gemini."""
+    print("\n" + "=" * 60)
+    print("Testing OpenRouter Provider (Gemini 3 Flash)")
+    print("=" * 60)
+
+    if not os.getenv("OPENROUTER_API_KEY"):
+        print("  Skipping: OPENROUTER_API_KEY not set")
+        return
+
+    gen = QueryGenerator(provider=Provider.OPENROUTER)
+    input_text = "CTO Singapore AI startup"
+    count = 3
+
+    print(f"\nInput: {input_text}")
+    print(f"Provider: OpenRouter / {gen.model}")
+    print("-" * 60)
+
+    result = await gen.generate(input_text, count=count, debug=True)
+
+    print(f"\nGenerated {len(result.queries)} queries:\n")
+    for i, query in enumerate(result.queries, 1):
+        print(f"{i}. {query}\n")
+
+    if result.meta:
+        print("-" * 60)
+        print("Metadata:")
+        for k, v in result.meta.items():
+            print(f"  {k}: {v}")
+
+    assert len(result.queries) == count
+    assert result.meta.get("provider") == "openrouter"
+    print("\n  OpenRouter test passed!")
+
+
 if __name__ == "__main__":
     # Check for API key
     if not os.getenv("ANTHROPIC_AUTH_TOKEN"):
-        print("Warning: ANTHROPIC_AUTH_TOKEN not set. Tests will fail.")
+        print("Warning: ANTHROPIC_AUTH_TOKEN not set. GLM tests will fail.")
         print("Set it with: export ANTHROPIC_AUTH_TOKEN=your_token")
-        sys.exit(1)
 
-    # Run async tests
-    asyncio.run(test_basic_generation())
-    asyncio.run(test_validation())
-    test_sync_wrapper()
+    # Run GLM tests if token available
+    if os.getenv("ANTHROPIC_AUTH_TOKEN"):
+        asyncio.run(test_basic_generation())
+        asyncio.run(test_validation())
+        test_sync_wrapper()
+    
+    # Run OpenRouter test
+    asyncio.run(test_openrouter_provider())

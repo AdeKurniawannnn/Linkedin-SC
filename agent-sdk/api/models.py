@@ -1,8 +1,15 @@
 """API request/response models for query generation."""
 
+from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class ProviderEnum(str, Enum):
+    """Supported LLM providers."""
+    glm = "glm"
+    openrouter = "openrouter"
 
 
 class GenerateRequest(BaseModel):
@@ -19,6 +26,10 @@ class GenerateRequest(BaseModel):
         ge=1,
         le=30,
         description="Number of query variants to generate (1-30)",
+    )
+    provider: ProviderEnum = Field(
+        default=ProviderEnum.glm,
+        description="LLM provider to use (glm or openrouter)",
     )
     debug: bool = Field(
         default=False,
