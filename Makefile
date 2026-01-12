@@ -4,7 +4,12 @@
         test-vitest test-vitest-watch test-components test-stores test-page test-e2e test-e2e-ui test-frontend-cov \
         test-install \
         convex-push convex-deploy convex-dashboard \
-        agent-sdk agent-sdk-frontend agent-sdk-backend agent-sdk-install agent-sdk-clean
+        agent-sdk agent-sdk-frontend agent-sdk-backend agent-sdk-install agent-sdk-clean \
+        agent-sdk-reflex agent-sdk-reflex-install agent-sdk-api agent-sdk-test \
+        serp serp-test serp-serve \
+        lint lint-frontend lint-backend format build \
+        docker-build docker-run
+
 
 # Get the directory where this Makefile lives (use CURDIR for paths with spaces)
 ROOT_DIR := $(CURDIR)
@@ -81,8 +86,27 @@ help:
 	@echo "  $(BRIGHT_YELLOW)make agent-sdk$(RESET)       - Run agent-sdk frontend + backend"
 	@echo "  $(YELLOW)make agent-sdk-frontend$(RESET) - Frontend only (port 3001)"
 	@echo "  $(YELLOW)make agent-sdk-backend$(RESET)  - Backend only (port 8001)"
+	@echo "  $(BRIGHT_CYAN)make agent-sdk-reflex$(RESET) - Run Reflex frontend (port 3001)"
+	@echo "  $(BRIGHT_CYAN)make agent-sdk-api$(RESET)   - Run API backend only (port 8000)"
+	@echo "  $(BRIGHT_GREEN)make agent-sdk-test$(RESET) - Run agent-sdk tests"
 	@echo "  $(DIM)make agent-sdk-install$(RESET) - Install agent-sdk dependencies"
-	@echo "  $(DIM)make agent-sdk-clean$(RESET)  - Stop agent-sdk services"
+	@echo "  $(DIM)make agent-sdk-reflex-install$(RESET) - Install Reflex dependencies"
+	@echo ""
+	@echo "$(BOLD)SERP API Aggregator:$(RESET)"
+	@echo "  $(BRIGHT_CYAN)make serp$(RESET)            - Show SERP CLI usage"
+	@echo "  $(BRIGHT_CYAN)make serp-test$(RESET)       - Run SERP aggregator tests"
+	@echo "  $(BRIGHT_BLUE)make serp-serve$(RESET)      - Start SERP REST API (port 8002)"
+	@echo ""
+	@echo "$(BOLD)Code Quality:$(RESET)"
+	@echo "  $(BRIGHT_MAGENTA)make lint$(RESET)            - Run all linters"
+	@echo "  $(MAGENTA)make lint-frontend$(RESET)    - ESLint for frontend"
+	@echo "  $(MAGENTA)make lint-backend$(RESET)     - Ruff for backend"
+	@echo "  $(BRIGHT_YELLOW)make format$(RESET)          - Format all code"
+	@echo ""
+	@echo "$(BOLD)Build & Deploy:$(RESET)"
+	@echo "  $(BRIGHT_GREEN)make build$(RESET)           - Production build"
+	@echo "  $(BRIGHT_BLUE)make docker-build$(RESET)    - Build Docker image"
+	@echo "  $(BLUE)make docker-run$(RESET)      - Run Docker container (port 3000)"
 
 # Run all 5 services (clean first to avoid port conflicts)
 dev: clean
@@ -313,4 +337,105 @@ agent-sdk-clean:
 	@echo "$(BOLD)$(RED)→$(RESET) $(BOLD)Stopping agent-sdk services...$(RESET)"
 	-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
 	-lsof -ti:3001 | xargs kill -9 2>/dev/null || true
+	-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Agent-SDK services stopped$(RESET)"
+
+# ============================================================================
+# AGENT SDK - REFLEX FRONTEND
+# ============================================================================
+
+# Run Reflex frontend + API backend
+agent-sdk-reflex: agent-sdk-clean
+	@echo "$(BOLD)$(BRIGHT_CYAN)→$(RESET) $(BOLD)Starting agent-sdk API on $(BRIGHT_BLUE):8000$(RESET), Reflex on $(BRIGHT_MAGENTA):3001$(RESET)$(BOLD)...$(RESET)"
+	@make -j2 agent-sdk-api _agent-sdk-reflex-run
+
+# API backend only (for Reflex frontend)
+agent-sdk-api:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ AGENT-SDK API$(RESET) $(DIM)($(BRIGHT_BLUE)port 8000$(RESET)$(DIM))$(RESET)"
+	@echo "$(BRIGHT_BLUE)→$(RESET) Starting Query Generator API..."
+	cd "$(ROOT_DIR)/agent-sdk" && source .venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Internal target for Reflex run
+_agent-sdk-reflex-run:
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ REFLEX FRONTEND$(RESET) $(DIM)($(BRIGHT_MAGENTA)port 3001$(RESET)$(DIM))$(RESET)"
+	@echo "$(BRIGHT_MAGENTA)→$(RESET) Starting Reflex Query Generator UI..."
+	cd "$(ROOT_DIR)/agent-sdk/frontend-reflex" && source .venv/bin/activate && reflex run
+
+# Install Reflex frontend dependencies
+agent-sdk-reflex-install:
+	@echo "$(BOLD)$(BRIGHT_CYAN)→$(RESET) Installing Reflex frontend dependencies..."
+	cd "$(ROOT_DIR)/agent-sdk/frontend-reflex" && uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt && reflex init
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Reflex installation complete$(RESET)"
+
+# Agent SDK tests
+agent-sdk-test:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ AGENT-SDK TESTS$(RESET)"
+	cd "$(ROOT_DIR)/agent-sdk" && source .venv/bin/activate && python test_generator.py
+
+# ============================================================================
+# SERP API AGGREGATOR
+# ============================================================================
+
+# Run SERP search
+serp:
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ SERP CLI$(RESET)"
+	@echo "Usage: serp search \"query\" or serp batch \"q1\" \"q2\" --parallel"
+	@echo "Run: cd serp-api-aggregator && serp --help"
+
+# SERP aggregator tests
+serp-test:
+	@echo "$(BOLD)$(BRIGHT_CYAN)━━━ SERP AGGREGATOR TESTS$(RESET)"
+	cd "$(ROOT_DIR)/serp-api-aggregator" && python tests/test_serp.py --all
+
+# SERP REST API server
+serp-serve:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ SERP API SERVER$(RESET) $(DIM)($(BRIGHT_BLUE)port 8002$(RESET)$(DIM))$(RESET)"
+	cd "$(ROOT_DIR)/serp-api-aggregator" && serp serve --port 8002
+
+# ============================================================================
+# LINTING & FORMATTING
+# ============================================================================
+
+# All linting
+lint: lint-frontend lint-backend
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Linting complete$(RESET)"
+
+# Frontend linting (ESLint)
+lint-frontend:
+	@echo "$(BOLD)$(BRIGHT_MAGENTA)━━━ FRONTEND LINT$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run lint
+
+# Backend linting (ruff if installed)
+lint-backend:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ BACKEND LINT$(RESET)"
+	@cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
+		(which ruff > /dev/null && ruff check . || echo "$(DIM)ruff not installed, skipping$(RESET)")
+
+# Format code (prettier + ruff)
+format:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ FORMAT CODE$(RESET)"
+	@cd "$(ROOT_DIR)/LinkedinSC/frontend" && npx prettier --write "src/**/*.{ts,tsx}" 2>/dev/null || true
+	@cd "$(ROOT_DIR)/LinkedinSC/backend" && source .venv/bin/activate && \
+		(which ruff > /dev/null && ruff format . || echo "$(DIM)ruff not installed, skipping$(RESET)")
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Formatting complete$(RESET)"
+
+# ============================================================================
+# BUILD & DOCKER
+# ============================================================================
+
+# Production build
+build:
+	@echo "$(BOLD)$(BRIGHT_YELLOW)━━━ PRODUCTION BUILD$(RESET)"
+	cd "$(ROOT_DIR)/LinkedinSC/frontend" && npm run build
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Build complete$(RESET)"
+
+# Docker build
+docker-build:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ DOCKER BUILD$(RESET)"
+	docker build -f Dockerfile.backend -t linkedin-sc-backend .
+	@echo "$(BOLD)$(BRIGHT_GREEN)✓ Docker image built: linkedin-sc-backend$(RESET)"
+
+# Docker run
+docker-run:
+	@echo "$(BOLD)$(BRIGHT_BLUE)━━━ DOCKER RUN$(RESET) $(DIM)($(BRIGHT_BLUE)port 3000$(RESET)$(DIM))$(RESET)"
+	docker run -p 3000:3000 --env-file .env linkedin-sc-backend
