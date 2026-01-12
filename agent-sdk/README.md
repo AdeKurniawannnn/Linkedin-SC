@@ -1,27 +1,45 @@
-# GLM Query Agent SDK
+# LinkedIn Query Generator
 
-LinkedIn lead generation query builder using Claude Agent SDK and GLM 4.7 model.
+LinkedIn lead generation query builder using Agno Framework with support for multiple LLM providers.
 
 ## Overview
 
-This agent generates **1-30 optimized LinkedIn search query variants** from natural language inputs, targeting global B2B markets with different search strategies.
+This library generates **1-30 optimized LinkedIn search query variants** from natural language inputs in a single LLM call, applying intelligent expansion (location, seniority, industry) without iterative optimization or query type categorization.
 
-**Built with:** [Claude Agent SDK](https://docs.claude.com/en/docs/claude-code/sdk) + [GLM 4.7](https://z.ai)
+**Built with:** [Agno Framework](https://github.com/agno-agi/agno) + Support for [GLM 4.7](https://z.ai), [OpenRouter](https://openrouter.ai), and other LLM providers
 
 ## Installation
 
 ```bash
-pip install claude-agent-sdk python-dotenv
+uv pip install agno python-dotenv pydantic
+```
+
+Or with pip:
+```bash
+pip install agno python-dotenv pydantic
 ```
 
 ## Configuration
+
+### GLM Provider (Default)
 
 Set environment variables (or use `.env` file):
 
 ```bash
 export ANTHROPIC_AUTH_TOKEN="your-glm-token.suffix"
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"  # Optional (default)
+export GLM_BASE_URL="https://api.z.ai/api/coding/paas/v4"  # Optional (default)
 export GLM_MODEL="glm-4.7"  # Optional (default)
+export DEFAULT_PROVIDER="glm"  # Optional (default)
+```
+
+### OpenRouter Provider
+
+To use OpenRouter instead:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."
+export OPENROUTER_MODEL="google/gemini-3-flash-preview"  # Optional (default)
+export DEFAULT_PROVIDER="openrouter"
 ```
 
 ## Usage
@@ -29,44 +47,44 @@ export GLM_MODEL="glm-4.7"  # Optional (default)
 ### Basic Example
 
 ```python
-from agent import GLMQueryAgent
+from generator import QueryGenerator
 
-agent = GLMQueryAgent()
+gen = QueryGenerator()  # Uses default GLM provider
 
-# Generate 3 variants (default)
-result = agent.generate_variants_sync("CEO Jakarta fintech")
+# Generate 10 query variants
+result = gen.generate_sync("CEO Jakarta fintech", count=10)
 
-for query_type, query in result.queries.items():
-    print(f"[{query_type}] {query}")
+for i, query in enumerate(result.queries, 1):
+    print(f"{i}. {query}")
 ```
 
 ### Async Example with Options
 
 ```python
 import asyncio
-from agent import GLMQueryAgent
+from generator import QueryGenerator, Provider
 
 async def main():
-    agent = GLMQueryAgent(timeout=180)
+    # Use OpenRouter provider instead
+    gen = QueryGenerator(provider=Provider.OPENROUTER, timeout=180)
 
     # Generate 10 variants with debug metadata
-    result = await agent.generate_variants(
+    result = await gen.generate(
         "CTO Singapore AI startup",
         count=10,
-        focus="seniority_focused",
         debug=True
     )
 
-    for query_type, queries in result.queries.items():
-        print(f"[{query_type}]")
-        if isinstance(queries, list):
-            for q in queries:
-                print(f"  - {q}")
-        else:
-            print(f"  {queries}")
+    print(f"Input: {result.input}")
+    print(f"Generated {len(result.queries)} queries:")
+    for i, query in enumerate(result.queries, 1):
+        print(f"  {i}. {query}")
 
     if result.meta:
-        print(f"Generated at: {result.meta['timestamp']}")
+        print(f"\nMetadata:")
+        print(f"  Provider: {result.meta['provider']}")
+        print(f"  Model: {result.meta['model']}")
+        print(f"  Generated at: {result.meta['timestamp']}")
 
 asyncio.run(main())
 ```
@@ -75,147 +93,147 @@ asyncio.run(main())
 
 ```python
 # Generate up to 30 query variants
-result = await agent.generate_variants(
+gen = QueryGenerator()
+result = gen.generate_sync(
     "CFO London fintech",
     count=30,
     debug=True
 )
 
-# Queries are distributed across types, with arrays for multiple variants
-# {
-#   "broad": ["query1", "query2", "query3"],
-#   "narrow": ["query1", "query2"],
-#   "balanced": ["query1", "query2"],
-#   ...
-# }
+# Returns a flat list of 30 optimized queries
+for i, query in enumerate(result.queries, 1):
+    print(f"{i}. {query}")
 ```
 
 ## API Reference
 
-### `GLMQueryAgent`
+### `QueryGenerator`
 
 #### Constructor
 
 ```python
-GLMQueryAgent(timeout=120, model=None, base_url=None)
+QueryGenerator(provider=None, model=None, timeout=120)
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `provider` | Provider | `glm` (from env) | LLM provider (glm or openrouter) |
+| `model` | str | Provider default | Model ID (from env or provider config) |
 | `timeout` | int | 120 | API call timeout in seconds |
-| `model` | str | `glm-4.7` | Model name (or `GLM_MODEL` env var) |
-| `base_url` | str | `https://api.z.ai/api/anthropic` | API endpoint (or `GLM_BASE_URL` env var) |
 
 #### Methods
 
-**`generate_variants(input_text, count=3, focus=None, debug=False)`** (async)
+**`generate(input_text, count=10, debug=False)`** (async)
+
+Generates N query variants from natural language input.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `input_text` | str | *required* | Natural language input (e.g., "CEO Jakarta fintech") |
-| `count` | int | 3 | Number of queries to generate (1-30) |
-| `focus` | str | None | Focus on specific query type |
-| `debug` | bool | False | Include metadata (timestamp, model) |
+| `count` | int | 10 | Number of queries to generate (1-30) |
+| `debug` | bool | False | Include metadata (timestamp, model, provider) |
 
-**`generate_variants_sync(...)`** - Synchronous wrapper.
+Returns: `SimpleQueryResult` with list of queries
+
+Raises: `QueryValidationError`, `QueryAuthError`, `QueryTimeoutError`, `QueryGeneratorError`
+
+**`generate_sync(input_text, count=10, debug=False)`** - Synchronous wrapper
 
 ### Data Classes
 
-**`QueryResult`**
+**`SimpleQueryResult`**
 ```python
-@dataclass
-class QueryResult:
-    input: str                        # Original input text
-    queries: Dict[str, str | list]    # Query type → query string or array
-    meta: Optional[Dict[str, str]]    # Metadata (if debug=True)
+class SimpleQueryResult(BaseModel):
+    input: str                      # Original natural language input
+    queries: List[str]              # List of generated query variants
+    meta: Optional[Dict[str, str]]  # Metadata (if debug=True)
+```
+
+### Enums
+
+**`Provider`**
+```python
+class Provider(str, Enum):
+    GLM = "glm"                     # Z.ai GLM 4.7 provider
+    OPENROUTER = "openrouter"      # OpenRouter multi-model provider
 ```
 
 ### Exceptions
 
 | Exception | Description |
 |-----------|-------------|
-| `GLMQueryError` | Base exception |
-| `GLMAuthError` | Authentication failed (missing/invalid token) |
-| `GLMTimeoutError` | API call timed out |
-| `GLMValidationError` | Response doesn't match schema |
+| `QueryGeneratorError` | Base exception |
+| `QueryAuthError` | Authentication failed (missing/invalid API key) |
+| `QueryTimeoutError` | API call timed out |
+| `QueryValidationError` | Input validation failed (empty/invalid count) |
 
-## Query Types (10 Available)
+## Query Generation Strategy
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `broad` | Maximum reach with expanded synonyms | Initial prospecting |
-| `narrow` | Maximum precision with exact terms | Targeted outreach |
-| `balanced` | Middle ground approach | General purpose |
-| `industry_focused` | Deep industry vertical expansion | Sector-specific campaigns |
-| `seniority_focused` | Comprehensive title coverage | Executive targeting |
-| `location_focused` | Deep geographic expansion | Regional campaigns |
-| `ultra_broad` | Maximum expansion across all dimensions | Wide net casting |
-| `ultra_narrow` | Single exact term per category | Laser-focused targeting |
-| `decision_maker` | Budget holders and influencers | Sales outreach |
-| `emerging_market` | Local title variants | APAC/LATAM/EMEA markets |
+The QueryGenerator uses intelligent expansion principles to create diverse LinkedIn search queries without explicit type categorization:
+
+- **Location Expansion**: Region-aware variants (San Francisco → Bay Area, SF, Silicon Valley)
+- **Seniority Expansion**: Multi-language title coverage (CEO, CTO, CFO, etc. in EN, DE, FR, ID, ES)
+- **Industry Expansion**: Sector-specific keyword variations (fintech, SaaS, AI/ML, etc.)
+- **Combination Variants**: Mix location + seniority + industry for comprehensive coverage
+
+All queries are optimized for LinkedIn's site:linkedin.com/in search syntax.
 
 ## Response Format
 
-### Single Queries (count ≤ 5)
-```json
-{
-  "input": "CEO Jakarta fintech",
-  "queries": {
-    "broad": "site:linkedin.com/in ...",
-    "narrow": "site:linkedin.com/in ...",
-    "balanced": "site:linkedin.com/in ..."
-  }
-}
-```
+Returns a flat list of query variants optimized for LinkedIn search:
 
-### Multiple Variants (count > 5)
 ```json
 {
   "input": "CEO Jakarta fintech",
-  "queries": {
-    "broad": [
-      "site:linkedin.com/in (Jakarta OR ...) ...",
-      "site:linkedin.com/in (DKI Jakarta OR ...) ..."
-    ],
-    "narrow": [
-      "site:linkedin.com/in Jakarta CEO fintech ...",
-      "site:linkedin.com/in \"Greater Jakarta\" ..."
-    ],
-    "industry_focused": [
-      "site:linkedin.com/in Jakarta (fintech OR payment OR ...) ..."
-    ]
+  "queries": [
+    "site:linkedin.com/in (Jakarta OR \"Greater Jakarta\" OR DKI) (CEO OR CTO OR COO) (fintech OR payment OR finance)",
+    "site:linkedin.com/in Jakarta \"Direktur Utama\" OR \"Chief Executive\" (fintech OR fintech startup)",
+    "site:linkedin.com/in (Jabodetabek OR \"Greater Jakarta\") CEO (fintech OR FinTech OR financial technology)",
+    "site:linkedin.com/in Jakarta (Executive OR Leadership) (fintech OR blockchain OR cryptocurrency)",
+    "site:linkedin.com/in \"Jakarta\" (fintech OR startup) CEO"
+  ],
+  "meta": {
+    "timestamp": "2025-01-12T10:30:45.123456",
+    "provider": "glm",
+    "model": "glm-4.7",
+    "count_requested": "5",
+    "count_returned": "5"
   }
 }
 ```
 
 ## Testing
 
+Run the example test:
+
 ```bash
 cd agent-sdk
 uv run test_example.py
 ```
 
+Or run the comprehensive test suite:
+
+```bash
+uv run test_generator.py
+```
+
 Expected output:
 ```
-GLM Query Agent SDK Test (v2.0)
+Query Generator Test
 ==================================================
 
 Input: CEO Jakarta fintech
 Count: 10
-Focus: none
 Debug: True
 
 Generating query variants...
 
-Generated 10 queries across 7 types:
+Generated 10 queries:
 
-[broad]
-  1. site:linkedin.com/in (Jakarta OR "Greater Jakarta" ...) ...
-  2. site:linkedin.com/in (Jakarta OR Jabodetabek ...) ...
-
-[narrow]
-  1. site:linkedin.com/in Jakarta CEO fintech ...
-  ...
+1. site:linkedin.com/in (Jakarta OR "Greater Jakarta") (CEO OR CTO) fintech
+2. site:linkedin.com/in Jakarta "Chief Executive" (fintech OR financial)
+3. site:linkedin.com/in (Jabodetabek OR "DKI Jakarta") CEO (fintech OR FinTech)
+...
 
 Test completed successfully!
 ```
@@ -225,13 +243,22 @@ Test completed successfully!
 ```
 agent-sdk/
 ├── __init__.py              # Package exports
-├── agent.py                 # Core GLMQueryAgent class
-├── prompts.py               # Prompt templates
-├── schemas/
-│   └── query_variants.json  # JSON schema for structured output
-├── test_example.py          # Test script
+├── generator.py             # Core QueryGenerator class with Agno integration
+├── expansion_prompt.py      # Prompt builder for query expansion
+├── simple_schemas.py        # SimpleQueryResult Pydantic model
+├── test_example.py          # Basic usage example
+├── test_generator.py        # Comprehensive test suite
 └── README.md
 ```
+
+### Data Flow
+
+1. User calls `QueryGenerator.generate(input_text, count)`
+2. Input validation (empty check, count bounds)
+3. Prompt building with expansion strategy via `build_expansion_prompt()`
+4. LLM call via Agno Agent with selected provider
+5. JSON extraction from LLM response
+6. Result wrapping in `SimpleQueryResult` with optional metadata
 
 ## Global Market Support
 
@@ -256,16 +283,30 @@ The agent includes intelligent expansion for:
 
 ## Environment Variables
 
+### GLM Provider
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ANTHROPIC_AUTH_TOKEN` | Yes | - | GLM API token |
-| `ANTHROPIC_BASE_URL` | No | `https://api.z.ai/api/anthropic` | API endpoint |
-| `GLM_MODEL` | No | `glm-4.7` | Model to use |
+| `ANTHROPIC_AUTH_TOKEN` | Yes (for GLM) | - | GLM API token from Z.ai |
+| `GLM_BASE_URL` | No | `https://api.z.ai/api/coding/paas/v4` | GLM API endpoint |
+| `GLM_MODEL` | No | `glm-4.7` | GLM model ID |
+
+### OpenRouter Provider
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENROUTER_API_KEY` | Yes (for OpenRouter) | - | OpenRouter API key |
+| `OPENROUTER_MODEL` | No | `google/gemini-3-flash-preview` | OpenRouter model ID |
+
+### Global
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DEFAULT_PROVIDER` | No | `glm` | Default provider to use (glm or openrouter) |
 
 ## Resources
 
-- [Claude Agent SDK Documentation](https://docs.claude.com/en/docs/claude-code/sdk)
-- [GLM Coding Plan](https://z.ai/subscribe?ic=8JVLJQFSKB)
+- [Agno Framework GitHub](https://github.com/agno-agi/agno)
+- [GLM 4.7 Documentation](https://z.ai)
+- [OpenRouter API Documentation](https://openrouter.ai/docs)
+- [LinkedIn URL Patterns](https://github.com/dennyleonardo/Linkedin-SC/blob/main/LinkedinSC/LINKEDIN_URL_PATTERNS.md)
 
 ## License
 

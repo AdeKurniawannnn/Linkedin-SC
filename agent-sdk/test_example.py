@@ -13,7 +13,7 @@ from pathlib import Path
 # Add current directory to path for local imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agent import GLMQueryAgent
+from generator import QueryGenerator
 
 
 async def main():
@@ -21,46 +21,34 @@ async def main():
     print("GLM Query Agent SDK Test (v2.0)")
     print("=" * 50)
 
-    # Initialize agent with 180s timeout
-    agent = GLMQueryAgent(timeout=180)
+    # Initialize generator with 180s timeout
+    generator = QueryGenerator(timeout=180)
 
     # Test input
     test_input = "CEO Jakarta fintech"
     count = 10
-    focus = None  # or "seniority", "industry", etc.
     debug = True
 
     print(f"\nInput: {test_input}")
     print(f"Count: {count}")
-    print(f"Focus: {focus or 'none'}")
     print(f"Debug: {debug}")
-    print(f"Model: {agent.model}")
-    print(f"Base URL: {agent.base_url}")
+    print(f"Model: {generator.model}")
+    print(f"Base URL: {generator.base_url}")
     print("\nGenerating query variants...\n")
 
     try:
         # Generate variants with new API
-        result = await agent.generate_variants(
+        result = await generator.generate(
             test_input,
             count=count,
-            focus=focus,
             debug=debug
         )
 
-        # Display results - count total queries (handle arrays)
-        total_queries = sum(
-            len(q) if isinstance(q, list) else 1
-            for q in result.queries.values()
-        )
-        print(f"Generated {total_queries} queries across {len(result.queries)} types:\n")
-        for query_type, queries in result.queries.items():
-            print(f"[{query_type}]")
-            if isinstance(queries, list):
-                for i, q in enumerate(queries, 1):
-                    print(f"  {i}. {q}")
-            else:
-                print(f"  {queries}")
-            print()
+        # Display results
+        print(f"Generated {len(result.queries)} queries:\n")
+        for i, query in enumerate(result.queries, 1):
+            print(f"{i}. {query}")
+        print()
 
         if result.meta:
             print(f"Meta: {result.meta}")

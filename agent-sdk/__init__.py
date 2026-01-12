@@ -19,30 +19,12 @@ from .generator import (
 )
 from .simple_schemas import SimpleQueryResult
 
-# Backward compatibility (deprecated)
-from .agent import (
-    GLMQueryAgent,
-    GLMQueryError,
-    GLMTimeoutError,
-    GLMValidationError,
-    GLMAuthError,
-    QueryResult,
-)
-
 __version__ = "3.0.0"
 __all__ = [
-    # New API
     "QueryGenerator",
     "SimpleQueryResult",
     "QueryGeneratorError",
     "QueryAuthError",
     "QueryValidationError",
     "QueryTimeoutError",
-    # Deprecated (backward compat)
-    "GLMQueryAgent",
-    "GLMQueryError",
-    "GLMTimeoutError",
-    "GLMValidationError",
-    "GLMAuthError",
-    "QueryResult",
 ]
